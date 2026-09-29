@@ -1,0 +1,6 @@
+{
+  "name": "SIM-Warga: Sistem Pendataan Warga Perumahan (RBAC)",
+  "description": "Aplikasi pendataan warga perumahan berbasis peran (RBAC) dengan hak akses terpisah antara Pengurus RT/Admin dan Warga Penghuni untuk data keluarga, iuran, surat pengantar, dan keamanan.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
