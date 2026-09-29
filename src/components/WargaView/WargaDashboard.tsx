@@ -17,13 +17,19 @@ import {
   Camera,
 } from 'lucide-react';
 import { KopDanLogoRT } from '../KopDanLogoRT';
+import { WebHostingBanner } from '../WebHostingBanner';
 
 interface WargaDashboardProps {
   onNavigateTab: (tab: string) => void;
   onOpenScanKK: () => void;
+  onOpenPrintPoster?: () => void;
 }
 
-export const WargaDashboard: React.FC<WargaDashboardProps> = ({ onNavigateTab, onOpenScanKK }) => {
+export const WargaDashboard: React.FC<WargaDashboardProps> = ({
+  onNavigateTab,
+  onOpenScanKK,
+  onOpenPrintPoster,
+}) => {
   const {
     currentUser,
     wargaList,
@@ -53,7 +59,10 @@ export const WargaDashboard: React.FC<WargaDashboardProps> = ({ onNavigateTab, o
   return (
     <div className="space-y-6">
       {/* 1. Official Letterhead & Logo (KOP RESMI RT 04) */}
-      <KopDanLogoRT onOpenScanKK={onOpenScanKK} />
+      <KopDanLogoRT onOpenScanKK={onOpenScanKK} onOpenWebHosting={onOpenPrintPoster} />
+
+      {/* Web Hosting Portal Address & Scannable QR Code */}
+      <WebHostingBanner onOpenPrintPoster={onOpenPrintPoster} />
 
       {/* 2. Welcome Banner */}
       <div className="bg-gradient-to-r from-emerald-900 via-slate-900 to-teal-950 rounded-3xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden border border-emerald-800/40">

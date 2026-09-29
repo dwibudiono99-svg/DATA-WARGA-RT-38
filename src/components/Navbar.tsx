@@ -17,6 +17,8 @@ import {
   Building2,
   FileText,
   Key,
+  Globe,
+  QrCode,
 } from 'lucide-react';
 
 interface NavbarProps {
@@ -24,6 +26,7 @@ interface NavbarProps {
   onTabChange: (tab: string) => void;
   onOpenAuthModal: () => void;
   onOpenScanKK: () => void;
+  onOpenWebHosting?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -31,6 +34,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onTabChange,
   onOpenAuthModal,
   onOpenScanKK,
+  onOpenWebHosting,
 }) => {
   const {
     currentUser,
@@ -171,6 +175,19 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           {/* Right Header: Notification & Profile */}
           <div className="flex items-center gap-2 sm:gap-3">
+            {/* Web Hosting Portal Quick Access */}
+            {onOpenWebHosting && (
+              <button
+                type="button"
+                onClick={onOpenWebHosting}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-900 border border-indigo-200 font-bold text-xs shadow-2xs transition-all cursor-pointer"
+                title="Lihat Alamat Web Hosting & QR Code Akses Warga"
+              >
+                <Globe className="w-3.5 h-3.5 text-indigo-600" />
+                <span className="hidden lg:inline">Alamat Web & QR</span>
+              </button>
+            )}
+
             {/* AI Scan KK Quick Action Button */}
             <button
               type="button"

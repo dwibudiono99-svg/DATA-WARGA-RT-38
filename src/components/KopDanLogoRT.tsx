@@ -11,15 +11,48 @@ import {
   ChevronUp,
   Sparkles,
   Award,
+  Globe,
+  Copy,
+  Check,
+  QrCode,
 } from 'lucide-react';
 
 interface KopDanLogoRTProps {
   onOpenScanKK?: () => void;
+  onOpenWebHosting?: () => void;
 }
 
-export const KopDanLogoRT: React.FC<KopDanLogoRTProps> = ({ onOpenScanKK }) => {
+export const KopDanLogoRT: React.FC<KopDanLogoRTProps> = ({ onOpenScanKK, onOpenWebHosting }) => {
   const { infoPerumahan, currentUser } = useRBAC();
   const [isCompact, setIsCompact] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const defaultHostingUrl =
+    typeof window !== 'undefined'
+      ? (window.location.origin.includes('localhost') || window.location.origin.includes('127.0.0.1'))
+        ? 'https://ais-pre-77zpadwefwxzehalu26qkm-513616529310.asia-east1.run.app'
+        : window.location.origin
+      : 'https://ais-pre-77zpadwefwxzehalu26qkm-513616529310.asia-east1.run.app';
+
+  const handleCopyUrl = async () => {
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(defaultHostingUrl);
+      } else {
+        const t = document.createElement('textarea');
+        t.value = defaultHostingUrl;
+        document.body.appendChild(t);
+        t.select();
+        document.execCommand('copy');
+        document.body.removeChild(t);
+      }
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
 
   return (
     <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden text-slate-800 transition-all">
@@ -123,6 +156,39 @@ export const KopDanLogoRT: React.FC<KopDanLogoRTProps> = ({ onOpenScanKK }) => {
                   </span>
                 </div>
               )}
+
+              {/* Official Web Hosting Address on KOP */}
+              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 pt-1.5">
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 border border-emerald-300 rounded-xl text-emerald-950 text-xs font-semibold">
+                  <Globe className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                  <span className="text-[11px] text-emerald-700">Web Portal:</span>
+                  <span className="font-mono font-bold text-xs text-emerald-900 select-all">
+                    {defaultHostingUrl.replace(/^https?:\/\//, '')}
+                  </span>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleCopyUrl}
+                  className="px-2.5 py-1 bg-white hover:bg-slate-100 border border-slate-300 rounded-xl text-[11px] font-bold text-slate-700 flex items-center gap-1 transition-colors cursor-pointer shadow-2xs"
+                  title="Salin alamat web portal ke papan klip"
+                >
+                  {copied ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3 text-slate-500" />}
+                  <span>{copied ? 'Tersalin!' : 'Salin URL'}</span>
+                </button>
+
+                {onOpenWebHosting && (
+                  <button
+                    type="button"
+                    onClick={onOpenWebHosting}
+                    className="px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-xl text-[11px] font-bold text-indigo-800 flex items-center gap-1 transition-colors cursor-pointer"
+                    title="Lihat QR Code & Cetak Poster Warga"
+                  >
+                    <QrCode className="w-3 h-3 text-indigo-600" />
+                    <span>QR Code Warga</span>
+                  </button>
+                )}
+              </div>
             </div>
           </div>
 

@@ -19,17 +19,20 @@ import {
   Scan,
 } from 'lucide-react';
 import { KopDanLogoRT } from '../KopDanLogoRT';
+import { WebHostingBanner } from '../WebHostingBanner';
 
 interface RTDashboardProps {
   onNavigateTab: (tab: string) => void;
   onOpenTambahWarga: () => void;
   onOpenScanKK: () => void;
+  onOpenPrintPoster?: () => void;
 }
 
 export const RTDashboard: React.FC<RTDashboardProps> = ({
   onNavigateTab,
   onOpenTambahWarga,
   onOpenScanKK,
+  onOpenPrintPoster,
 }) => {
   const {
     wargaList,
@@ -61,7 +64,10 @@ export const RTDashboard: React.FC<RTDashboardProps> = ({
   return (
     <div className="space-y-6">
       {/* 1. Official Letterhead & Logo (KOP RESMI RT 04) */}
-      <KopDanLogoRT onOpenScanKK={onOpenScanKK} />
+      <KopDanLogoRT onOpenScanKK={onOpenScanKK} onOpenWebHosting={onOpenPrintPoster} />
+
+      {/* Web Hosting Portal Address & Scannable QR Code */}
+      <WebHostingBanner onOpenPrintPoster={onOpenPrintPoster} />
 
       {/* 2. Welcome Banner */}
       <div className="bg-gradient-to-r from-indigo-950 via-slate-900 to-indigo-900 rounded-3xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden border border-indigo-800/40">
