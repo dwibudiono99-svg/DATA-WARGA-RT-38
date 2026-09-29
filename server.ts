@@ -109,7 +109,7 @@ Struktur JSON yang harus dikembalikan:
       data: parsedData,
     });
   } catch (error: any) {
-    console.error('Error saat ekstraksi KK dengan Gemini AI:', error);
+    console.warn('Perhatian saat ekstraksi KK dengan Gemini AI:', error?.message || error);
     // Return fallback so the app continues seamlessly
     return res.json({
       success: true,
