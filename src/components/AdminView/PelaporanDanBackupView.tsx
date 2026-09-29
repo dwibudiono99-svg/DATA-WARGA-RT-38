@@ -29,6 +29,8 @@ import {
   Unlock,
 } from 'lucide-react';
 import { KopDanLogoRT } from '../KopDanLogoRT';
+import { EditKopRTModal } from '../EditKopRTModal';
+import { BlokRumah } from '../../types/rbac';
 
 export const PelaporanDanBackupView: React.FC = () => {
   const {
@@ -51,6 +53,17 @@ export const PelaporanDanBackupView: React.FC = () => {
   } = useRBAC();
 
   const [activeSubTab, setActiveSubTab] = useState<'export' | 'backup' | 'reset'>('export');
+
+  // Official Report Management State ("Atur Laporan")
+  const [activeReportModal, setActiveReportModal] = useState<
+    'buku_induk' | 'lpj_keuangan' | 'register_surat' | 'satpam' | null
+  >(null);
+  const [reportFilterBlok, setReportFilterBlok] = useState<'all' | BlokRumah>('all');
+  const [reportPeriode, setReportPeriode] = useState<string>('September 2026');
+  const [reportIncludeStamp, setReportIncludeStamp] = useState<boolean>(true);
+  const [reportPaperSize, setReportPaperSize] = useState<'A4' | 'F4'>('A4');
+  const [showDetailKK, setShowDetailKK] = useState<boolean>(true);
+  const [isKopModalOpen, setIsKopModalOpen] = useState<boolean>(false);
 
   // Import State
   const [importJsonText, setImportJsonText] = useState<string>('');
@@ -475,8 +488,16 @@ export const PelaporanDanBackupView: React.FC = () => {
               <div className="space-y-2 pt-2 border-t border-slate-100">
                 <button
                   type="button"
+                  onClick={() => setActiveReportModal('buku_induk')}
+                  className="w-full py-2.5 px-4 bg-indigo-50 hover:bg-indigo-100 text-indigo-950 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer border border-indigo-200"
+                >
+                  <FileText className="w-4 h-4 text-indigo-700" />
+                  <span>Atur & Cetak Buku Induk (Model A.1)</span>
+                </button>
+                <button
+                  type="button"
                   onClick={handleExportWarga}
-                  className="w-full py-2.5 px-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer shadow-md shadow-indigo-600/20"
+                  className="w-full py-2 px-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer shadow-md shadow-indigo-600/20"
                 >
                   <Download className="w-4 h-4" />
                   <span>Unduh Rekap Warga (CSV)</span>
@@ -504,8 +525,16 @@ export const PelaporanDanBackupView: React.FC = () => {
               <div className="space-y-2 pt-2 border-t border-slate-100">
                 <button
                   type="button"
+                  onClick={() => setActiveReportModal('lpj_keuangan')}
+                  className="w-full py-2.5 px-4 bg-emerald-50 hover:bg-emerald-100 text-emerald-950 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer border border-emerald-200"
+                >
+                  <FileText className="w-4 h-4 text-emerald-700" />
+                  <span>Atur & Cetak LPJ Kas RT</span>
+                </button>
+                <button
+                  type="button"
                   onClick={handleExportIuran}
-                  className="w-full py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer shadow-md shadow-emerald-600/20"
+                  className="w-full py-2 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer shadow-md shadow-emerald-600/20"
                 >
                   <Download className="w-4 h-4" />
                   <span>Unduh Rekap Iuran & Kas (CSV)</span>
@@ -533,8 +562,16 @@ export const PelaporanDanBackupView: React.FC = () => {
               <div className="space-y-2 pt-2 border-t border-slate-100">
                 <button
                   type="button"
+                  onClick={() => setActiveReportModal('register_surat')}
+                  className="w-full py-2.5 px-4 bg-blue-50 hover:bg-blue-100 text-blue-950 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer border border-blue-200"
+                >
+                  <FileText className="w-4 h-4 text-blue-700" />
+                  <span>Atur & Cetak Register Surat</span>
+                </button>
+                <button
+                  type="button"
                   onClick={handleExportSurat}
-                  className="w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer shadow-md shadow-blue-600/20"
+                  className="w-full py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer shadow-md shadow-blue-600/20"
                 >
                   <Download className="w-4 h-4" />
                   <span>Unduh Register Surat (CSV)</span>
@@ -562,8 +599,16 @@ export const PelaporanDanBackupView: React.FC = () => {
               <div className="space-y-2 pt-2 border-t border-slate-100">
                 <button
                   type="button"
+                  onClick={() => setActiveReportModal('satpam')}
+                  className="w-full py-2.5 px-4 bg-amber-50 hover:bg-amber-100 text-amber-950 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer border border-amber-200"
+                >
+                  <FileText className="w-4 h-4 text-amber-700" />
+                  <span>Atur & Cetak Jadwal Satpam</span>
+                </button>
+                <button
+                  type="button"
                   onClick={handleExportKeamanan}
-                  className="w-full py-2.5 px-4 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer shadow-md shadow-amber-600/20"
+                  className="w-full py-2 px-4 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer shadow-md shadow-amber-600/20"
                 >
                   <Download className="w-4 h-4" />
                   <span>Unduh Kontak Keamanan (CSV)</span>
@@ -607,10 +652,10 @@ export const PelaporanDanBackupView: React.FC = () => {
                   <Printer className="w-5 h-5 text-amber-300" />
                 </div>
                 <h4 className="font-extrabold text-base text-white">
-                  Cetak Lembar Rekap Resmi RT
+                  Pusat Cetak & Format Laporan RT
                 </h4>
                 <p className="text-xs text-slate-300 leading-relaxed">
-                  Cetak langsung format dokumen cetak resmi lengkap dengan KOP surat perumahan dan tanda tangan pengurus.
+                  Atur format laporan resmi (Buku Induk Warga, LPJ Kas RT, Register Surat) lengkap dengan KOP resmi dan pengesahan tanda tangan.
                 </p>
                 <div className="text-[11px] text-amber-300 font-semibold pt-1">
                   Format Siap Cetak Kertas A4
@@ -620,11 +665,11 @@ export const PelaporanDanBackupView: React.FC = () => {
               <div className="space-y-2 pt-2 border-t border-indigo-800/60">
                 <button
                   type="button"
-                  onClick={() => window.print()}
+                  onClick={() => setActiveReportModal('buku_induk')}
                   className="w-full py-2.5 px-4 bg-white hover:bg-slate-100 text-slate-950 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer shadow-md"
                 >
                   <Printer className="w-4 h-4 text-indigo-700" />
-                  <span>Buka Dialog Cetak / Simpan PDF</span>
+                  <span>Buka Format Laporan Resmi RT</span>
                 </button>
               </div>
             </div>
@@ -982,6 +1027,565 @@ export const PelaporanDanBackupView: React.FC = () => {
           </div>
         </div>
       )}
+      {/* MODAL: PUSAT PENGATURAN & CETAK LAPORAN RESMI RT (TATA NASKAH & FORMAT LAPORAN DINAS) */}
+      {activeReportModal && (() => {
+        const filteredWargaReport = wargaList.filter(
+          (w) => reportFilterBlok === 'all' || w.blokRumah === reportFilterBlok
+        );
+
+        const filteredIuranReport = iuranList.filter(
+          (i) =>
+            (reportFilterBlok === 'all' || i.blokRumah === reportFilterBlok) &&
+            (i.periodeBulan === reportPeriode || reportPeriode === 'all')
+        );
+
+        const filteredSuratReport = suratList.filter(
+          (s) => reportFilterBlok === 'all' || s.blokRumah === reportFilterBlok
+        );
+
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/75 backdrop-blur-xs overflow-y-auto animate-in fade-in">
+            <div className="relative w-full max-w-5xl bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden text-slate-800 my-auto max-h-[94vh] flex flex-col">
+              {/* Modal Top Control Bar (Hidden on Print) */}
+              <div className="print:hidden px-6 py-4 bg-slate-900 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-4 shrink-0">
+                <div className="flex items-center gap-2.5">
+                  <FileSpreadsheet className="w-5 h-5 text-emerald-400" />
+                  <div>
+                    <h3 className="font-extrabold text-sm">
+                      Pusat Format & Pengaturan Laporan Resmi RT
+                    </h3>
+                    <p className="text-[11px] text-slate-300">
+                      Format resmi siap cetak standar administrasi pemerintah desa/kelurahan
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => window.print()}
+                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer shadow-md shadow-emerald-700/25"
+                  >
+                    <Printer className="w-4 h-4" />
+                    <span>Cetak Dokumen Laporan</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setActiveReportModal(null)}
+                    className="p-2 text-slate-400 hover:text-white rounded-xl transition-colors cursor-pointer"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Sub-toolbar: Report Selector & Filter Controls (Atur Laporan) */}
+              <div className="print:hidden px-6 py-3 bg-slate-100 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3 text-xs shrink-0">
+                {/* Switcher */}
+                <div className="flex flex-wrap gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setActiveReportModal('buku_induk')}
+                    className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
+                      activeReportModal === 'buku_induk'
+                        ? 'bg-indigo-600 text-white shadow-xs'
+                        : 'bg-white text-slate-700 hover:bg-slate-200'
+                    }`}
+                  >
+                    1. Buku Induk Warga (Model A.1)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveReportModal('lpj_keuangan')}
+                    className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
+                      activeReportModal === 'lpj_keuangan'
+                        ? 'bg-emerald-600 text-white shadow-xs'
+                        : 'bg-white text-slate-700 hover:bg-slate-200'
+                    }`}
+                  >
+                    2. LPJ Keuangan & Kas RT
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveReportModal('register_surat')}
+                    className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
+                      activeReportModal === 'register_surat'
+                        ? 'bg-blue-600 text-white shadow-xs'
+                        : 'bg-white text-slate-700 hover:bg-slate-200'
+                    }`}
+                  >
+                    3. Register Surat Pengantar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveReportModal('satpam')}
+                    className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
+                      activeReportModal === 'satpam'
+                        ? 'bg-amber-600 text-white shadow-xs'
+                        : 'bg-white text-slate-700 hover:bg-slate-200'
+                    }`}
+                  >
+                    4. Daftar Petugas Keamanan
+                  </button>
+                </div>
+
+                {/* Scope Filters & Settings */}
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsKopModalOpen(true)}
+                    className="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-900 border border-indigo-200 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
+                  >
+                    <Sliders className="w-3.5 h-3.5 text-indigo-700" />
+                    <span>Atur Kop & Logo Resmi</span>
+                  </button>
+
+                  <select
+                    value={reportFilterBlok}
+                    onChange={(e) => setReportFilterBlok(e.target.value as any)}
+                    className="px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-semibold"
+                  >
+                    <option value="all">Semua Blok</option>
+                    <option value="Blok A">Blok A</option>
+                    <option value="Blok B">Blok B</option>
+                    <option value="Blok C">Blok C</option>
+                    <option value="Blok D">Blok D</option>
+                  </select>
+
+                  <select
+                    value={reportPeriode}
+                    onChange={(e) => setReportPeriode(e.target.value)}
+                    className="px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-semibold"
+                  >
+                    <option value="September 2026">September 2026</option>
+                    <option value="Agustus 2026">Agustus 2026</option>
+                    <option value="Juli 2026">Juli 2026</option>
+                    <option value="all">Semua Periode</option>
+                  </select>
+
+                  <select
+                    value={reportPaperSize}
+                    onChange={(e) => setReportPaperSize(e.target.value as 'A4' | 'F4')}
+                    className="px-2 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-semibold"
+                  >
+                    <option value="A4">Kertas A4</option>
+                    <option value="F4">Kertas F4 / Folio</option>
+                  </select>
+
+                  {activeReportModal === 'buku_induk' && (
+                    <label className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-700 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={showDetailKK}
+                        onChange={(e) => setShowDetailKK(e.target.checked)}
+                        className="rounded text-indigo-600"
+                      />
+                      <span>Detail Item KK</span>
+                    </label>
+                  )}
+
+                  <label className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-700 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={reportIncludeStamp}
+                      onChange={(e) => setReportIncludeStamp(e.target.checked)}
+                      className="rounded text-emerald-600"
+                    />
+                    <span>Sertakan Stempel RT</span>
+                  </label>
+                </div>
+              </div>
+
+              {/* Printable Official Report Document Body */}
+              <div className={`p-8 sm:p-12 overflow-y-auto space-y-6 text-slate-900 bg-white text-xs ${reportPaperSize === 'F4' ? 'min-h-[1050px]' : 'min-h-[900px]'}`}>
+                {/* Official KOP RT */}
+                <div className="relative pb-3 text-center">
+                  <div className="flex items-center justify-between gap-4">
+                    {/* Logo Kiri */}
+                    <div className="w-16 h-16 sm:w-20 sm:h-20 flex items-center justify-center shrink-0">
+                      {infoPerumahan.logoResmiKiri ? (
+                        <img
+                          src={infoPerumahan.logoResmiKiri}
+                          alt="Logo Kiri"
+                          className="max-h-full max-w-full object-contain"
+                        />
+                      ) : (
+                        <div className="w-16 h-16 rounded-full border border-slate-300 flex items-center justify-center text-[8px]">
+                          LOGO
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Hierarchy Center */}
+                    <div className="flex-1 space-y-0.5">
+                      <h4 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-slate-800">
+                        {infoPerumahan.headerBaris1 || `PEMERINTAH ${infoPerumahan.kota.toUpperCase()}`}
+                      </h4>
+                      <h4 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-slate-800">
+                        {infoPerumahan.headerBaris2 || `KECAMATAN ${infoPerumahan.kecamatan.toUpperCase()} - KELURAHAN ${infoPerumahan.kelurahan.toUpperCase()}`}
+                      </h4>
+                      <h2 className="text-base sm:text-lg font-black uppercase tracking-tight text-slate-950 font-sans">
+                        {infoPerumahan.headerBaris3 || `RUKUN TETANGGA ${infoPerumahan.rtRw.split('/')[0]?.trim()} / RUKUN WARGA ${infoPerumahan.rtRw.split('/')[1]?.trim()}`}
+                      </h2>
+                      <h3 className="text-xs sm:text-sm font-extrabold uppercase text-emerald-900 font-sans">
+                        {infoPerumahan.headerBaris4 || infoPerumahan.namaPerumahan.toUpperCase()}
+                      </h3>
+                      <p className="text-[10px] text-slate-600 font-sans leading-tight pt-0.5">
+                        Sekretariat: {infoPerumahan.alamatSekretariat}, Kode Pos: {infoPerumahan.kodePos}
+                      </p>
+                    </div>
+
+                    {/* Logo Kanan */}
+                    <div className="w-16 h-16 sm:w-20 sm:h-20 flex items-center justify-center shrink-0">
+                      {infoPerumahan.logoResmiKanan ? (
+                        <img
+                          src={infoPerumahan.logoResmiKanan}
+                          alt="Logo Kanan"
+                          className="max-h-full max-w-full object-contain"
+                        />
+                      ) : (
+                        <div className="w-16 h-16" />
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Garis Pembatas Sesuai Setting Resmi Kop */}
+                  <div className="pt-3">
+                    {infoPerumahan.kopBorderType === 'single' ? (
+                      <div className="h-[2px] bg-slate-900 w-full" />
+                    ) : infoPerumahan.kopBorderType === 'ornament' ? (
+                      <div className="flex items-center gap-2 py-1">
+                        <div className="h-[1.5px] bg-slate-900 flex-1" />
+                        <span className="text-[10px] text-slate-800 font-serif">❖ ❖ ❖</span>
+                        <div className="h-[1.5px] bg-slate-900 flex-1" />
+                      </div>
+                    ) : (
+                      <div className="space-y-[2px]">
+                        <div className="h-[2.5px] bg-slate-900 w-full" />
+                        <div className="h-[1px] bg-slate-900 w-full" />
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* 1. REPORT CONTENT: BUKU INDUK KEPENDUDUKAN (MODEL A.1) */}
+                {activeReportModal === 'buku_induk' && (
+                  <div className="space-y-4">
+                    <div className="text-center space-y-1">
+                      <h3 className="text-base font-black uppercase underline tracking-wider font-sans">
+                        BUKU INDUK KEPENDUDUKAN RUKUN TETANGGA
+                      </h3>
+                      <p className="text-xs font-semibold text-slate-600">
+                        Format Model A.1 Administrasi Desa/Kelurahan • Wilayah: {infoPerumahan.rtRw} • {reportFilterBlok === 'all' ? 'Seluruh Blok' : reportFilterBlok}
+                      </p>
+                    </div>
+
+                    <div className="overflow-x-auto border border-slate-300 rounded-xl">
+                      <table className="w-full text-left text-[10px] text-slate-900">
+                        <thead className="bg-slate-100 border-b border-slate-300 text-slate-700 font-bold uppercase text-[9px]">
+                          <tr>
+                            <th className="px-2 py-2 text-center w-7">No</th>
+                            <th className="px-2.5 py-2">Nama Kepala Keluarga</th>
+                            <th className="px-2.5 py-2">NIK</th>
+                            <th className="px-2.5 py-2">No. KK</th>
+                            <th className="px-2 py-2 text-center">Rumah</th>
+                            <th className="px-2 py-2 text-center">Status</th>
+                            {showDetailKK && (
+                              <>
+                                <th className="px-2 py-2">Agama</th>
+                                <th className="px-2 py-2">Pendidikan</th>
+                                <th className="px-2 py-2">Perkawinan</th>
+                              </>
+                            )}
+                            <th className="px-2.5 py-2">Pekerjaan</th>
+                            <th className="px-2 py-2 text-center">Jiwa</th>
+                            <th className="px-2.5 py-2 text-center">Status KK</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-200">
+                          {filteredWargaReport.map((w, idx) => (
+                            <tr key={w.id} className="hover:bg-slate-50">
+                              <td className="px-2 py-2 text-center font-bold">{idx + 1}</td>
+                              <td className="px-2.5 py-2 font-bold uppercase">{w.namaLengkap}</td>
+                              <td className="px-2.5 py-2 font-mono">{w.nik}</td>
+                              <td className="px-2.5 py-2 font-mono">{w.noKK}</td>
+                              <td className="px-2 py-2 text-center font-bold">{w.nomorRumah}</td>
+                              <td className="px-2 py-2 text-center">{w.statusHunian}</td>
+                              {showDetailKK && (
+                                <>
+                                  <td className="px-2 py-2">{w.agama || 'Islam'}</td>
+                                  <td className="px-2 py-2">{w.pendidikan || 'D4/S1'}</td>
+                                  <td className="px-2 py-2">{w.statusPernikahan || 'Kawin'}</td>
+                                </>
+                              )}
+                              <td className="px-2.5 py-2">{w.pekerjaan}</td>
+                              <td className="px-2 py-2 text-center font-bold">{w.jumlahAnggotaKeluarga || 1}</td>
+                              <td className="px-2.5 py-2 text-center font-semibold">
+                                {w.statusVerifikasiKK === 'Terverifikasi' ? (
+                                  <span className="text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">✓ Lengkap</span>
+                                ) : (
+                                  <span className="text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">⚠ Belum</span>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* Summary box */}
+                    <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl flex flex-wrap items-center justify-between text-xs font-semibold">
+                      <span>Total Kepala Keluarga: <strong>{filteredWargaReport.length} KK</strong></span>
+                      <span>Total Jiwa Penduduk: <strong>{filteredWargaReport.reduce((acc, c) => acc + (c.jumlahAnggotaKeluarga || 1), 0)} Orang</strong></span>
+                      <span>KK Terverifikasi: <strong>{filteredWargaReport.filter(w => w.statusVerifikasiKK === 'Terverifikasi').length} KK</strong></span>
+                    </div>
+
+                    {/* Signatures */}
+                    <div className="pt-8 grid grid-cols-2 text-center text-xs font-sans">
+                      <div className="space-y-16">
+                        <p>Sekretaris RT,</p>
+                        <p className="font-bold underline">{infoPerumahan.namaSekretarisRT || 'Ahmad Fauzi, S.T.'}</p>
+                      </div>
+
+                      <div className="space-y-16 relative">
+                        <p>
+                          {infoPerumahan.kota}, {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}<br />
+                          Ketua {infoPerumahan.rtRw},
+                        </p>
+                        <div className="relative">
+                          {reportIncludeStamp && (
+                            <div className="absolute -top-12 left-1/2 -translate-x-1/2 w-20 h-20 rounded-full border-2 border-indigo-600/40 text-indigo-800 text-[8px] font-bold flex items-center justify-center rotate-12 pointer-events-none bg-indigo-50/15">
+                              STEMPEL RT 04
+                            </div>
+                          )}
+                          <p className="font-bold underline text-slate-950">{infoPerumahan.namaKetuaRT}</p>
+                          <p className="text-[10px] text-slate-500 font-mono">NIK: {infoPerumahan.nikKetuaRT || '3276011504780001'}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* 2. REPORT CONTENT: LPJ KEUANGAN & KAS RT */}
+                {activeReportModal === 'lpj_keuangan' && (
+                  <div className="space-y-4">
+                    <div className="text-center space-y-1">
+                      <h3 className="text-base font-black uppercase underline tracking-wider font-sans">
+                        LAPORAN PERTANGGUNGJAWABAN (LPJ) KAS & IURAN WARGA
+                      </h3>
+                      <p className="text-xs font-semibold text-slate-600">
+                        Periode Pembukuan: {reportPeriode} • Rukun Tetangga {infoPerumahan.rtRw}
+                      </p>
+                    </div>
+
+                    <div className="overflow-x-auto border border-slate-300 rounded-xl">
+                      <table className="w-full text-left text-[10px] text-slate-900">
+                        <thead className="bg-slate-100 border-b border-slate-300 text-slate-700 font-bold uppercase text-[9px]">
+                          <tr>
+                            <th className="px-2.5 py-2 text-center w-8">No</th>
+                            <th className="px-3 py-2">Nama Warga / Kepala Keluarga</th>
+                            <th className="px-3 py-2 text-center">Kavling</th>
+                            <th className="px-3 py-2">Jenis Iuran Lingkungan</th>
+                            <th className="px-3 py-2 text-right">Nominal Tagihan</th>
+                            <th className="px-3 py-2 text-center">Status</th>
+                            <th className="px-3 py-2">Tanggal Bayar</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-200">
+                          {filteredIuranReport.map((item, idx) => (
+                            <tr key={item.id} className="hover:bg-slate-50">
+                              <td className="px-2.5 py-2 text-center font-bold">{idx + 1}</td>
+                              <td className="px-3 py-2 font-bold">{item.namaWarga}</td>
+                              <td className="px-3 py-2 text-center font-semibold">{item.nomorRumah}</td>
+                              <td className="px-3 py-2">{item.jenisIuran}</td>
+                              <td className="px-3 py-2 text-right font-mono font-bold">
+                                Rp {item.nominal.toLocaleString('id-ID')}
+                              </td>
+                              <td className="px-3 py-2 text-center font-semibold">
+                                {item.statusBayar === 'Lunas' ? (
+                                  <span className="text-emerald-700">✓ Lunas</span>
+                                ) : (
+                                  <span className="text-amber-700">Belum Bayar</span>
+                                )}
+                              </td>
+                              <td className="px-3 py-2 text-slate-600">{item.tanggalBayar || '-'}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* Summary box */}
+                    <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl flex flex-wrap items-center justify-between text-xs font-semibold text-emerald-950">
+                      <span>Total Tagihan Periode Ini: <strong>Rp {filteredIuranReport.reduce((a, b) => a + b.nominal, 0).toLocaleString('id-ID')}</strong></span>
+                      <span>Total Terkumpul: <strong>Rp {filteredIuranReport.filter(i => i.statusBayar === 'Lunas').reduce((a, b) => a + b.nominal, 0).toLocaleString('id-ID')}</strong></span>
+                      <span>Saldo Kas Terkini RT: <strong>Rp {infoPerumahan.saldoKasRt.toLocaleString('id-ID')}</strong></span>
+                    </div>
+
+                    {/* Signatures */}
+                    <div className="pt-8 grid grid-cols-2 text-center text-xs font-sans">
+                      <div className="space-y-16">
+                        <p>Bendahara RT,</p>
+                        <p className="font-bold underline">{infoPerumahan.namaBendaharaRT || 'Dewi Sartika, S.E.'}</p>
+                      </div>
+
+                      <div className="space-y-16 relative">
+                        <p>
+                          {infoPerumahan.kota}, {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}<br />
+                          Ketua {infoPerumahan.rtRw},
+                        </p>
+                        <div className="relative">
+                          {reportIncludeStamp && (
+                            <div className="absolute -top-12 left-1/2 -translate-x-1/2 w-20 h-20 rounded-full border-2 border-indigo-600/40 text-indigo-800 text-[8px] font-bold flex items-center justify-center rotate-12 pointer-events-none bg-indigo-50/15">
+                              STEMPEL RT 04
+                            </div>
+                          )}
+                          <p className="font-bold underline text-slate-950">{infoPerumahan.namaKetuaRT}</p>
+                          <p className="text-[10px] text-slate-500 font-mono">NIK: {infoPerumahan.nikKetuaRT || '3276011504780001'}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* 3. REPORT CONTENT: REGISTER SURAT */}
+                {activeReportModal === 'register_surat' && (
+                  <div className="space-y-4">
+                    <div className="text-center space-y-1">
+                      <h3 className="text-base font-black uppercase underline tracking-wider font-sans">
+                        BUKU REGISTER PENOMORAN & AGENDA SURAT PENGANTAR RT
+                      </h3>
+                      <p className="text-xs font-semibold text-slate-600">
+                        Buku Arsip Persuratan Resmi • Wilayah: {infoPerumahan.rtRw}
+                      </p>
+                    </div>
+
+                    <div className="overflow-x-auto border border-slate-300 rounded-xl">
+                      <table className="w-full text-left text-[10px] text-slate-900">
+                        <thead className="bg-slate-100 border-b border-slate-300 text-slate-700 font-bold uppercase text-[9px]">
+                          <tr>
+                            <th className="px-2.5 py-2 text-center w-8">No</th>
+                            <th className="px-3 py-2 font-mono">Nomor Surat Resmi</th>
+                            <th className="px-3 py-2">Nama Pemohon</th>
+                            <th className="px-3 py-2">NIK</th>
+                            <th className="px-3 py-2 text-center">Rumah</th>
+                            <th className="px-3 py-2">Jenis Surat</th>
+                            <th className="px-3 py-2">Keperluan</th>
+                            <th className="px-3 py-2 text-center">Status</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-200">
+                          {filteredSuratReport.map((s, idx) => (
+                            <tr key={s.id} className="hover:bg-slate-50">
+                              <td className="px-2.5 py-2 text-center font-bold">{idx + 1}</td>
+                              <td className="px-3 py-2 font-mono font-bold">{s.nomorSuratResmi || 'Belum Terbit'}</td>
+                              <td className="px-3 py-2 font-bold">{s.namaPemohon}</td>
+                              <td className="px-3 py-2 font-mono">{s.nikPemohon}</td>
+                              <td className="px-3 py-2 text-center">{s.nomorRumah}</td>
+                              <td className="px-3 py-2">{s.jenisSurat}</td>
+                              <td className="px-3 py-2 text-slate-600">{s.keperluan}</td>
+                              <td className="px-3 py-2 text-center font-semibold">{s.status}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* Signatures */}
+                    <div className="pt-8 flex justify-end text-center text-xs font-sans">
+                      <div className="space-y-16 relative w-64">
+                        <p>
+                          {infoPerumahan.kota}, {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}<br />
+                          Ketua {infoPerumahan.rtRw},
+                        </p>
+                        <div className="relative">
+                          {reportIncludeStamp && (
+                            <div className="absolute -top-12 left-1/2 -translate-x-1/2 w-20 h-20 rounded-full border-2 border-indigo-600/40 text-indigo-800 text-[8px] font-bold flex items-center justify-center rotate-12 pointer-events-none bg-indigo-50/15">
+                              STEMPEL RT 04
+                            </div>
+                          )}
+                          <p className="font-bold underline text-slate-950">{infoPerumahan.namaKetuaRT}</p>
+                          <p className="text-[10px] text-slate-500 font-mono">NIK: {infoPerumahan.nikKetuaRT || '3276011504780001'}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* 4. REPORT CONTENT: SATPAM */}
+                {activeReportModal === 'satpam' && (
+                  <div className="space-y-4">
+                    <div className="text-center space-y-1">
+                      <h3 className="text-base font-black uppercase underline tracking-wider font-sans">
+                        DIREKTORI & JADWAL PETUGAS KEAMANAN (SATPAM)
+                      </h3>
+                      <p className="text-xs font-semibold text-slate-600">
+                        Regu Keamanan Lingkungan • {infoPerumahan.namaPerumahan}
+                      </p>
+                    </div>
+
+                    <div className="overflow-x-auto border border-slate-300 rounded-xl">
+                      <table className="w-full text-left text-[10px] text-slate-900">
+                        <thead className="bg-slate-100 border-b border-slate-300 text-slate-700 font-bold uppercase text-[9px]">
+                          <tr>
+                            <th className="px-2.5 py-2 text-center w-8">No</th>
+                            <th className="px-3 py-2">Nama Petugas</th>
+                            <th className="px-3 py-2">Jabatan Regu</th>
+                            <th className="px-3 py-2">Pos Jaga</th>
+                            <th className="px-3 py-2">Shift Piket</th>
+                            <th className="px-3 py-2 text-center">Status Jaga</th>
+                            <th className="px-3 py-2">Kontak Telepon / WA</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-200">
+                          {petugasKeamananList.map((p, idx) => (
+                            <tr key={p.id} className="hover:bg-slate-50">
+                              <td className="px-2.5 py-2 text-center font-bold">{idx + 1}</td>
+                              <td className="px-3 py-2 font-bold">{p.namaLengkap}</td>
+                              <td className="px-3 py-2">{p.jabatan}</td>
+                              <td className="px-3 py-2">{p.posJaga}</td>
+                              <td className="px-3 py-2">{p.shift}</td>
+                              <td className="px-3 py-2 text-center font-semibold">{p.statusJaga}</td>
+                              <td className="px-3 py-2 font-mono">{p.noHp}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* Signatures */}
+                    <div className="pt-8 grid grid-cols-2 text-center text-xs font-sans">
+                      <div className="space-y-16">
+                        <p>Komandan Regu Satpam,</p>
+                        <p className="font-bold underline">{petugasKeamananList[0]?.namaLengkap || 'Sutrisno Wibowo'}</p>
+                      </div>
+
+                      <div className="space-y-16 relative">
+                        <p>
+                          Mengetahui,<br />
+                          Ketua {infoPerumahan.rtRw},
+                        </p>
+                        <div className="relative">
+                          {reportIncludeStamp && (
+                            <div className="absolute -top-12 left-1/2 -translate-x-1/2 w-20 h-20 rounded-full border-2 border-indigo-600/40 text-indigo-800 text-[8px] font-bold flex items-center justify-center rotate-12 pointer-events-none bg-indigo-50/15">
+                              STEMPEL RT 04
+                            </div>
+                          )}
+                          <p className="font-bold underline text-slate-950">{infoPerumahan.namaKetuaRT}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Modal Pengaturan KOP & Persuratan Resmi */}
+      <EditKopRTModal isOpen={isKopModalOpen} onClose={() => setIsKopModalOpen(false)} />
     </div>
   );
 };

@@ -33,6 +33,7 @@ import { JenisSuratManagerModal } from '../JenisSuratManagerModal';
 export const LayananSuratRT: React.FC = () => {
   const {
     suratList,
+    wargaList,
     jenisSuratList,
     currentUser,
     ajukanSurat,
@@ -170,6 +171,16 @@ export const LayananSuratRT: React.FC = () => {
               >
                 <Sliders className="w-4 h-4 text-indigo-600" />
                 <span>Kelola Jenis Surat</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setIsKopModalOpen(true)}
+                className="px-3.5 py-2.5 bg-amber-50 hover:bg-amber-100 text-amber-900 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer border border-amber-200"
+                title="Atur Tata Naskah & Format Aturan Persuratan RT"
+              >
+                <FileText className="w-4 h-4 text-amber-600" />
+                <span>Atur Format Surat</span>
               </button>
             </>
           )}
@@ -700,131 +711,347 @@ export const LayananSuratRT: React.FC = () => {
         </div>
       )}
 
-      {/* MODAL: Printable Official Letterhead (KOP SURAT DINAMIS RT) */}
-      {viewingLetter && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/70 backdrop-blur-xs overflow-y-auto animate-in fade-in">
-          <div className="relative w-full max-w-2xl bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden text-slate-800 my-auto max-h-[92vh] flex flex-col">
-            <div className="print:hidden px-6 py-4 bg-slate-900 text-white flex items-center justify-between shrink-0">
-              <div className="flex items-center gap-2">
-                <Printer className="w-5 h-5 text-emerald-400" />
-                <h3 className="font-bold text-sm">Pratinjau Surat Resmi RT 04 (Format Cetak Siap Pakai)</h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setViewingLetter(null)}
-                className="p-1 rounded-lg text-white/80 hover:text-white"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
+      {/* MODAL: Printable Official Letterhead (TATA NASKAH DINAS SURAT RESMI RT) */}
+      {viewingLetter && (() => {
+        const pemohonWarga = wargaList.find(
+          (w) => w.id === viewingLetter.wargaId || w.nik === viewingLetter.nikPemohon
+        );
 
-            {/* Letter Document Content */}
-            <div className="p-8 sm:p-10 overflow-y-auto space-y-6 text-slate-900 font-serif leading-relaxed">
-              {/* Dynamic Kop Surat */}
-              <div className="text-center border-b-2 border-slate-900 pb-4 space-y-1">
-                <span className="text-[10px] font-black uppercase tracking-widest text-emerald-800 bg-emerald-50 px-2.5 py-0.5 rounded-md border border-emerald-200 font-sans">
-                  PENGURUS RUKUN TETANGGA
-                </span>
-                <h2 className="text-lg font-black tracking-wider uppercase font-sans">
-                  RUKUN TETANGGA {infoPerumahan.rtRw.split('/')[0]?.trim()} / RUKUN WARGA {infoPerumahan.rtRw.split('/')[1]?.trim()}
-                </h2>
-                <h3 className="text-base font-extrabold uppercase font-sans text-slate-800">
-                  {infoPerumahan.namaPerumahan.toUpperCase()}
-                </h3>
-                <p className="text-xs text-slate-600 font-sans">
-                  Kelurahan {infoPerumahan.kelurahan}, Kecamatan {infoPerumahan.kecamatan}, {infoPerumahan.kota} {infoPerumahan.kodePos}
-                </p>
-                <p className="text-[10px] text-slate-500 font-sans">
-                  Sekretariat: {infoPerumahan.alamatSekretariat} • Telp/Hotline: {infoPerumahan.hotlineRT}
-                </p>
-              </div>
-
-              {/* Title & Nomor */}
-              <div className="text-center space-y-1 pt-1">
-                <h4 className="font-extrabold text-base uppercase underline font-sans">
-                  {viewingLetter.jenisSurat}
-                </h4>
-                <p className="text-xs font-mono font-bold text-slate-700">
-                  Nomor: {viewingLetter.nomorSuratResmi || '470/RT.04/RW.09/IX/2026'}
-                </p>
-              </div>
-
-              {/* Body */}
-              <p className="text-xs">
-                Yang bertanda tangan di bawah ini, Ketua Rukun Tetangga ({infoPerumahan.rtRw}) Kelurahan {infoPerumahan.kelurahan}, Kecamatan {infoPerumahan.kecamatan}, dengan ini menerangkan bahwa:
-              </p>
-
-              <div className="px-6 space-y-1.5 text-xs">
-                <div className="grid grid-cols-3">
-                  <span className="text-slate-600">Nama Lengkap</span>
-                  <span className="col-span-2 font-bold">: {viewingLetter.namaPemohon}</span>
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/75 backdrop-blur-xs overflow-y-auto animate-in fade-in">
+            <div className="relative w-full max-w-3xl bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden text-slate-800 my-auto max-h-[94vh] flex flex-col">
+              <div className="print:hidden px-6 py-4 bg-slate-900 text-white flex items-center justify-between shrink-0">
+                <div className="flex items-center gap-2">
+                  <Printer className="w-5 h-5 text-emerald-400" />
+                  <div>
+                    <h3 className="font-bold text-sm">Pratinjau Surat Resmi RT (Standar Tata Naskah Dinas)</h3>
+                    <p className="text-[11px] text-slate-300">
+                      Format sesuai Permendagri & Administrasi Persuratan RT/RW
+                    </p>
+                  </div>
                 </div>
-                <div className="grid grid-cols-3">
-                  <span className="text-slate-600">NIK Kependudukan</span>
-                  <span className="col-span-2 font-mono font-semibold">: {viewingLetter.nikPemohon}</span>
-                </div>
-                <div className="grid grid-cols-3">
-                  <span className="text-slate-600">Alamat Tempat Tinggal</span>
-                  <span className="col-span-2 font-medium">
-                    : {viewingLetter.blokRumah} No. {viewingLetter.nomorRumah}, {infoPerumahan.namaPerumahan}
-                  </span>
-                </div>
-                <div className="grid grid-cols-3">
-                  <span className="text-slate-600">Maksud / Keperluan</span>
-                  <span className="col-span-2 font-bold text-indigo-950">
-                    : {viewingLetter.alasanFormalAI || viewingLetter.keperluan}
-                  </span>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => window.print()}
+                    className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+                  >
+                    <Printer className="w-3.5 h-3.5" />
+                    <span>Cetak Surat</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setViewingLetter(null)}
+                    className="p-1 rounded-lg text-white/80 hover:text-white"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
                 </div>
               </div>
 
-              <p className="text-xs leading-relaxed">
-                {viewingLetter.drafSuratAI ||
-                  'Adalah benar yang bersangkutan merupakan warga sah yang berdomisili di lingkungan perumahan kami, berkelakuan baik, dan aktif bermasyarakat. Surat pengantar ini diterbitkan dengan sebenarnya untuk dapat dipergunakan sebagaimana mestinya.'}
-              </p>
-
-              {/* Signature section */}
-              <div className="pt-6 flex justify-between text-xs font-sans">
-                <div className="text-center space-y-16">
-                  <p>Pemohon,</p>
-                  <p className="font-bold underline">{viewingLetter.namaPemohon}</p>
-                </div>
-                <div className="text-center space-y-16">
-                  <p>
-                    {infoPerumahan.kota}, {viewingLetter.tanggalSelesai || viewingLetter.tanggalPengajuan}
-                    <br />
-                    Ketua {infoPerumahan.rtRw},
-                  </p>
-                  <div className="relative">
-                    <div className="absolute -top-12 left-1/2 -translate-x-1/2 w-20 h-20 rounded-full border-2 border-emerald-600/40 text-emerald-800 text-[9px] font-bold flex items-center justify-center rotate-12 pointer-events-none">
-                      STEMPEL RT 04
+              {/* Letter Document Content - Authentic Indonesian Official Paper Layout */}
+              <div className="p-8 sm:p-12 overflow-y-auto space-y-5 text-slate-900 font-serif leading-relaxed bg-white text-xs">
+                {/* 1. Official Header (KOP RESMI RT Standar Tata Naskah Dinas) */}
+                <div className="relative pb-3 text-center">
+                  <div className="flex items-center justify-between gap-4">
+                    {/* Logo Kiri (Garuda / Pemda) */}
+                    <div className="w-20 h-20 flex items-center justify-center shrink-0">
+                      {infoPerumahan.logoResmiKiri ? (
+                        <img
+                          src={infoPerumahan.logoResmiKiri}
+                          alt="Logo Resmi Kiri"
+                          className="max-h-full max-w-full object-contain"
+                        />
+                      ) : (
+                        <div className="w-16 h-16 rounded-full border border-slate-300 flex items-center justify-center text-[8px] font-sans">
+                          LOGO
+                        </div>
+                      )}
                     </div>
-                    <p className="font-bold underline">{infoPerumahan.namaKetuaRT}</p>
+
+                    {/* Center Typography */}
+                    <div className="flex-1 space-y-0.5">
+                      <h4 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-slate-800">
+                        {infoPerumahan.headerBaris1 || `PEMERINTAH ${infoPerumahan.kota.toUpperCase()}`}
+                      </h4>
+                      <h4 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-slate-800">
+                        {infoPerumahan.headerBaris2 || `KECAMATAN ${infoPerumahan.kecamatan.toUpperCase()} - KELURAHAN ${infoPerumahan.kelurahan.toUpperCase()}`}
+                      </h4>
+                      <h2 className="text-base sm:text-lg font-black uppercase tracking-tight text-slate-950 font-sans">
+                        {infoPerumahan.headerBaris3 || `RUKUN TETANGGA ${infoPerumahan.rtRw.split('/')[0]?.trim()} / RUKUN WARGA ${infoPerumahan.rtRw.split('/')[1]?.trim()}`}
+                      </h2>
+                      <h3 className="text-xs sm:text-sm font-extrabold uppercase text-emerald-900 font-sans">
+                        {infoPerumahan.headerBaris4 || infoPerumahan.namaPerumahan.toUpperCase()}
+                      </h3>
+                      <p className="text-[10px] text-slate-600 font-sans leading-tight pt-0.5">
+                        Sekretariat: {infoPerumahan.alamatSekretariat}, Kode Pos: {infoPerumahan.kodePos}
+                      </p>
+                      <p className="text-[10px] text-slate-500 font-sans">
+                        Telp / WhatsApp: {infoPerumahan.hotlineRT} {infoPerumahan.emailRT ? `• Email: ${infoPerumahan.emailRT}` : ''}
+                      </p>
+                    </div>
+
+                    {/* Logo Kanan (Kompleks / RT) */}
+                    <div className="w-20 h-20 flex items-center justify-center shrink-0">
+                      {infoPerumahan.logoResmiKanan ? (
+                        <img
+                          src={infoPerumahan.logoResmiKanan}
+                          alt="Logo Resmi Kanan"
+                          className="max-h-full max-w-full object-contain"
+                        />
+                      ) : (
+                        <div className="w-20 h-20" />
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Garis Pembatas Sesuai Setting Resmi Kop */}
+                  <div className="pt-3">
+                    {infoPerumahan.kopBorderType === 'single' ? (
+                      <div className="h-[2px] bg-slate-900 w-full" />
+                    ) : infoPerumahan.kopBorderType === 'ornament' ? (
+                      <div className="flex items-center gap-2 py-1">
+                        <div className="h-[1.5px] bg-slate-900 flex-1" />
+                        <span className="text-[10px] text-slate-800 font-serif">❖ ❖ ❖</span>
+                        <div className="h-[1.5px] bg-slate-900 flex-1" />
+                      </div>
+                    ) : (
+                      <div className="space-y-[2px]">
+                        <div className="h-[2.5px] bg-slate-900 w-full" />
+                        <div className="h-[1px] bg-slate-900 w-full" />
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* 2. Metadata Surat (Nomor, Sifat, Lampiran, Perihal, & Tujuan) */}
+                <div className="pt-1 flex flex-col sm:flex-row sm:items-start justify-between gap-4 font-sans text-xs">
+                  <div className="space-y-1">
+                    <div className="grid grid-cols-3 gap-2">
+                      <span className="font-semibold text-slate-600">Nomor</span>
+                      <span className="col-span-2 font-mono font-bold text-slate-950">
+                        : {viewingLetter.nomorSuratResmi || '470 / 024 / RT.04-RW.09 / IX / 2026'}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2">
+                      <span className="font-semibold text-slate-600">Sifat</span>
+                      <span className="col-span-2 font-medium text-slate-800">
+                        : {viewingLetter.sifatSurat || 'Biasa'}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2">
+                      <span className="font-semibold text-slate-600">Lampiran</span>
+                      <span className="col-span-2 text-slate-800">
+                        : {viewingLetter.lampiran || '-'}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2">
+                      <span className="font-semibold text-slate-600">Perihal</span>
+                      <span className="col-span-2 font-bold text-slate-950 underline">
+                        : {viewingLetter.jenisSurat}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Alamat Tujuan Instansi */}
+                  <div className="text-left sm:text-right font-sans space-y-0.5">
+                    <p className="font-semibold text-slate-500 text-[11px]">Kepada Yang Terhormat:</p>
+                    <p className="font-extrabold text-slate-900 text-xs">
+                      {infoPerumahan.instansiTujuanDefault || `Bapak / Ibu Lurah ${infoPerumahan.kelurahan}`}
+                    </p>
+                    <p className="text-slate-600 text-[11px]">Kecamatan {infoPerumahan.kecamatan}</p>
+                    <p className="text-slate-600 text-[11px]">di - Tempat</p>
+                  </div>
+                </div>
+
+                {/* 3. Judul Tengah Naskah Dinas */}
+                <div className="text-center space-y-1 pt-2">
+                  <h3 className="font-black text-sm uppercase underline tracking-wider font-sans">
+                    {viewingLetter.jenisSurat}
+                  </h3>
+                  <p className="text-[11px] font-mono font-bold text-slate-700">
+                    Nomor: {viewingLetter.nomorSuratResmi || '470 / 024 / RT.04-RW.09 / IX / 2026'}
+                  </p>
+                </div>
+
+                {/* 4. Kalimat Pembuka Resmi */}
+                <p className="text-xs leading-relaxed text-justify indent-8">
+                  Yang bertanda tangan di bawah ini, Ketua Rukun Tetangga (RT) {infoPerumahan.rtRw} Kelurahan {infoPerumahan.kelurahan}, Kecamatan {infoPerumahan.kecamatan}, {infoPerumahan.kota}, Provinsi {infoPerumahan.provinsi || 'Jawa Barat'}, dengan ini menerangkan bahwa:
+                </p>
+
+                {/* 5. Tabel Identitas Pemohon Sesuai Isian Kartu Keluarga (KK) */}
+                <div className="px-3 sm:px-6 space-y-1.5 text-xs font-sans">
+                  <div className="grid grid-cols-3 py-0.5 border-b border-slate-100">
+                    <span className="text-slate-600">1. Nama Lengkap</span>
+                    <span className="col-span-2 font-bold uppercase text-slate-950">
+                      : {viewingLetter.namaPemohon}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-3 py-0.5 border-b border-slate-100">
+                    <span className="text-slate-600">2. NIK (Kependudukan)</span>
+                    <span className="col-span-2 font-mono font-bold text-slate-900">
+                      : {viewingLetter.nikPemohon}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-3 py-0.5 border-b border-slate-100">
+                    <span className="text-slate-600">3. Nomor Kartu Keluarga (No. KK)</span>
+                    <span className="col-span-2 font-mono font-semibold text-slate-900">
+                      : {pemohonWarga?.noKK || viewingLetter.noKKPemohon || '3276012809050001'}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-3 py-0.5 border-b border-slate-100">
+                    <span className="text-slate-600">4. Tempat, Tanggal Lahir</span>
+                    <span className="col-span-2 text-slate-900">
+                      : {pemohonWarga?.tempatLahir || 'Depok'}, {pemohonWarga?.tanggalLahir || '1985-05-12'}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-3 py-0.5 border-b border-slate-100">
+                    <span className="text-slate-600">5. Jenis Kelamin</span>
+                    <span className="col-span-2 text-slate-900">
+                      : {pemohonWarga?.jenisKelamin || viewingLetter.jenisKelaminPemohon || 'Laki-laki'}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-3 py-0.5 border-b border-slate-100">
+                    <span className="text-slate-600">6. Kewarganegaraan / Agama</span>
+                    <span className="col-span-2 text-slate-900">
+                      : {pemohonWarga?.kewarganegaraan || 'WNI'} / {pemohonWarga?.agama || 'Islam'}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-3 py-0.5 border-b border-slate-100">
+                    <span className="text-slate-600">7. Pekerjaan / Pendidikan</span>
+                    <span className="col-span-2 text-slate-900">
+                      : {pemohonWarga?.pekerjaan || viewingLetter.pekerjaanPemohon || 'Karyawan Swasta'} ({pemohonWarga?.pendidikan || 'Diploma IV / Strata I'})
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-3 py-0.5 border-b border-slate-100">
+                    <span className="text-slate-600">8. Status Perkawinan</span>
+                    <span className="col-span-2 text-slate-900">
+                      : {pemohonWarga?.statusPernikahan || 'Kawin Tercatat'}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-3 py-0.5 border-b border-slate-100">
+                    <span className="text-slate-600">9. Alamat KTP</span>
+                    <span className="col-span-2 text-slate-800">
+                      : {pemohonWarga?.alamatKtp || `${infoPerumahan.namaPerumahan} ${viewingLetter.blokRumah} No. ${viewingLetter.nomorRumah}`}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-3 py-0.5">
+                    <span className="text-slate-600">10. Alamat Domisili Sekarang</span>
+                    <span className="col-span-2 font-medium text-slate-950">
+                      : {infoPerumahan.namaPerumahan} {viewingLetter.blokRumah} No. {viewingLetter.nomorRumah}, {infoPerumahan.rtRw}, Kel. {infoPerumahan.kelurahan}
+                    </span>
+                  </div>
+                </div>
+
+                {/* 6. Isi / Maksud Permohonan */}
+                <p className="text-xs leading-relaxed text-justify indent-8">
+                  Berdasarkan catatan buku induk kependudukan RT kami dan pengamatan lingkungan, nama tersebut di atas adalah benar warga penghuni sah yang berdomisili di alamat kami, berkelakuan baik, aktif bermasyarakat, serta tidak sedang tersangkut permasalahan hukum perdata maupun pidana. Surat pengantar ini diberikan untuk keperluan:
+                </p>
+
+                <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl font-sans text-xs font-semibold text-slate-900">
+                  "{viewingLetter.alasanFormalAI || viewingLetter.keperluan}"
+                </div>
+
+                {/* 7. Klausul Masa Berlaku & Penutup Baku */}
+                <p className="text-xs leading-relaxed text-justify">
+                  Surat pengantar ini berlaku selama <strong>{infoPerumahan.masaBerlakuHari || 30} (tiga puluh) hari kalender</strong> terhitung sejak tanggal diterbitkan. Demikian surat pengantar ini dibuat dengan sebenarnya dan penuh rasa tanggung jawab agar dapat dipergunakan sebagaimana mestinya oleh instansi yang bersangkutan.
+                </p>
+
+                {/* 8. Kolom Pengesahan Tanda Tangan Sesuai Aturan Persuratan */}
+                <div className="pt-6 font-sans text-xs">
+                  <div className="flex justify-end text-right pb-4">
+                    <p className="text-xs font-medium">
+                      {infoPerumahan.kota}, {viewingLetter.tanggalSelesai || viewingLetter.tanggalPengajuan || new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
+                    </p>
+                  </div>
+
+                  {/* Dynamic Signature Grid */}
+                  <div className="flex items-start justify-between gap-6 text-center">
+                    {/* Ttd Pemohon */}
+                    {infoPerumahan.tampilkanTtdPemohon !== false && (
+                      <div className="flex-1 space-y-16">
+                        <p>Warga Pemohon,</p>
+                        <p className="font-bold underline uppercase">{viewingLetter.namaPemohon}</p>
+                      </div>
+                    )}
+
+                    {/* Mengetahui RW */}
+                    {infoPerumahan.tampilkanKetuaRW !== false && (
+                      <div className="flex-1 space-y-16">
+                        <p>
+                          Mengetahui,<br />
+                          Ketua Rukun Warga {infoPerumahan.rtRw.split('/')[1]?.trim() || 'RW 09'},
+                        </p>
+                        <p className="font-bold underline">{infoPerumahan.namaKetuaRW || 'Drs. H. Mulyadi Saputra, M.M.'}</p>
+                      </div>
+                    )}
+
+                    {/* Pengesahan Ketua RT */}
+                    <div className="flex-1 space-y-16 relative">
+                      <p>
+                        Ketua Rukun Tetangga {infoPerumahan.rtRw.split('/')[0]?.trim() || 'RT 04'},
+                      </p>
+
+                      <div className="relative">
+                        {/* Stempel Digital Bulat RT */}
+                        {infoPerumahan.stempelResmiAktif !== false && (
+                          <div className="absolute -top-12 left-1/2 -translate-x-1/2 w-20 h-20 rounded-full border-2 border-indigo-600/40 text-indigo-800 text-[8px] font-bold flex items-center justify-center rotate-12 pointer-events-none bg-indigo-50/15">
+                            STEMPEL RT 04
+                          </div>
+                        )}
+
+                        <p className="font-bold underline text-slate-950">{infoPerumahan.namaKetuaRT}</p>
+                        <p className="text-[10px] text-slate-500 font-mono">
+                          NIK: {infoPerumahan.nikKetuaRT || '3276011504780001'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Legal Footer Note */}
+                  <div className="pt-6 border-t border-slate-200 flex items-center justify-between text-[10px] text-slate-500">
+                    <p>
+                      {infoPerumahan.footerCatatanKaki || 'Surat pengantar ini sah dengan stempel digital resmi RT dan QR Code validasi keabsahan naskah dinas.'}
+                    </p>
+                    <div className="flex items-center gap-1 font-mono text-[9px] text-slate-400">
+                      <QrCode className="w-3.5 h-3.5 text-slate-500" />
+                      <span>VALID-{viewingLetter.id.toUpperCase()}</span>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
 
-            {/* Bottom Actions */}
-            <div className="print:hidden p-4 bg-slate-50 border-t border-slate-200 flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setViewingLetter(null)}
-                className="px-4 py-2 border border-slate-300 rounded-xl text-slate-700 text-xs font-semibold hover:bg-white"
-              >
-                Tutup
-              </button>
-              <button
-                type="button"
-                onClick={() => window.print()}
-                className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md cursor-pointer"
-              >
-                <Printer className="w-4 h-4" />
-                <span>Cetak Lembar Dokumen</span>
-              </button>
+              {/* Bottom Actions */}
+              <div className="print:hidden p-4 bg-slate-50 border-t border-slate-200 flex justify-end gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setViewingLetter(null)}
+                  className="px-4 py-2 border border-slate-300 rounded-xl text-slate-700 text-xs font-semibold hover:bg-white cursor-pointer"
+                >
+                  Tutup
+                </button>
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md cursor-pointer"
+                >
+                  <Printer className="w-4 h-4" />
+                  <span>Cetak Surat Pengantar Resmi</span>
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Global Modals for KOP & Jenis Surat */}
       <EditKopRTModal isOpen={isKopModalOpen} onClose={() => setIsKopModalOpen(false)} />
