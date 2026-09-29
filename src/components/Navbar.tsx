@@ -19,6 +19,7 @@ import {
   Key,
   Globe,
   QrCode,
+  ShieldCheck,
 } from 'lucide-react';
 
 interface NavbarProps {
@@ -62,6 +63,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     { id: 'warga', label: 'Data Warga & Rumah', icon: Users },
     { id: 'iuran', label: 'Kas & Iuran Warga', icon: CreditCard },
     { id: 'surat', label: 'Layanan Surat RT', icon: FileCheck2 },
+    { id: 'keamanan', label: 'Petugas Keamanan', icon: ShieldCheck },
     { id: 'laporan', label: 'Lapor Tamu & Fasum', icon: AlertCircle },
     { id: 'matrix', label: 'Matriks RBAC', icon: Key },
     { id: 'audit', label: 'Log Audit', icon: Shield },
@@ -73,6 +75,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     { id: 'data-saya', label: 'Data Rumah Saya', icon: Users },
     { id: 'bayar-iuran', label: 'Iuran Bulanan', icon: CreditCard },
     { id: 'ajukan-surat', label: 'Surat Pengantar RT', icon: FileCheck2 },
+    { id: 'keamanan', label: 'Kontak Keamanan', icon: ShieldCheck },
     { id: 'lapor-tamu', label: 'Lapor Tamu / Fasum', icon: AlertCircle },
     { id: 'sandbox', label: 'Uji Akses RBAC (Lab)', icon: FlaskConical },
   ];

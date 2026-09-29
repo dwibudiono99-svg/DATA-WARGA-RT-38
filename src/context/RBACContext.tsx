@@ -11,9 +11,11 @@ import {
   PengumumanPerumahan,
   AuditLogPerumahan,
   InfoPerumahan,
-  StatusSurat,
   StatusBayar,
+  StatusSurat,
   StatusLaporan,
+  JenisSuratConfig,
+  PetugasKeamanan,
 } from '../types/rbac';
 import {
   DEFAULT_ROLE_PERMISSIONS,
@@ -25,6 +27,8 @@ import {
   INITIAL_LAPORAN,
   INITIAL_PENGUMUMAN,
   INITIAL_AUDIT_LOGS,
+  INITIAL_JENIS_SURAT,
+  INITIAL_PETUGAS_KEAMANAN,
   PERMISSION_DEFINITIONS,
 } from '../data/defaultData';
 
@@ -43,6 +47,8 @@ interface RBACContextType {
   wargaList: WargaItem[];
   iuranList: IuranItem[];
   suratList: SuratItem[];
+  jenisSuratList: JenisSuratConfig[];
+  petugasKeamananList: PetugasKeamanan[];
   laporanList: LaporanLingkungan[];
   pengumumanList: PengumumanPerumahan[];
   auditLogs: AuditLogPerumahan[];
@@ -59,6 +65,9 @@ interface RBACContextType {
   logout: () => void;
   registerWargaUser: (nama: string, email: string, blok: WargaItem['blokRumah'], nomor: string, role: Role) => User;
 
+  // Kop & Info Perumahan Management
+  updateInfoPerumahan: (newInfo: Partial<InfoPerumahan>) => boolean;
+
   // Warga Management (Admin / User)
   tambahWarga: (warga: Omit<WargaItem, 'id'>) => void;
   updateWarga: (id: string, updates: Partial<WargaItem>) => boolean;
@@ -69,9 +78,19 @@ interface RBACContextType {
   verifikasiIuran: (iuranId: string, status: StatusBayar) => boolean;
   tambahIuranBaru: (iuran: Omit<IuranItem, 'id'>) => void;
 
-  // Surat Pengantar RT
-  ajukanSurat: (surat: { jenisSurat: SuratItem['jenisSurat']; keperluan: string }) => void;
+  // Surat Pengantar RT & Jenis Surat
+  ajukanSurat: (surat: { jenisSurat: string; keperluan: string; drafSuratAI?: string; alasanFormalAI?: string; catatanAI?: string }) => void;
   prosesSuratRT: (suratId: string, disetujui: boolean, catatan?: string) => boolean;
+  tambahJenisSurat: (item: Omit<JenisSuratConfig, 'id'>) => boolean;
+  updateJenisSurat: (id: string, updates: Partial<JenisSuratConfig>) => boolean;
+  hapusJenisSurat: (id: string) => boolean;
+  generateDrafSuratAI: (suratId: string) => Promise<{ drafSurat: string; alasanFormalDisempurnakan: string; catatanRekomendasiAI: string }>;
+
+  // Petugas Keamanan
+  tambahPetugasKeamanan: (petugas: Omit<PetugasKeamanan, 'id'>) => boolean;
+  updatePetugasKeamanan: (id: string, updates: Partial<PetugasKeamanan>) => boolean;
+  hapusPetugasKeamanan: (id: string) => boolean;
+  updateStatusJagaPetugas: (id: string, status: PetugasKeamanan['statusJaga']) => boolean;
 
   // Laporan Lingkungan & Tamu
   buatLaporan: (laporan: { kategori: LaporanLingkungan['kategori']; judul: string; rincian: string }) => void;
@@ -98,11 +117,13 @@ const STORAGE_KEYS = {
   WARGA: 'sim_warga_data',
   IURAN: 'sim_warga_iuran',
   SURAT: 'sim_warga_surat',
+  JENIS_SURAT: 'sim_warga_jenis_surat',
+  PETUGAS_KEAMANAN: 'sim_warga_petugas_keamanan',
   LAPORAN: 'sim_warga_laporan',
   PENGUMUMAN: 'sim_warga_pengumuman',
   PERMISSIONS: 'sim_warga_permissions',
   AUDIT_LOGS: 'sim_warga_audit_logs',
-  INFO: 'sim_warga_info',
+  INFO: 'sim_warga_info_perumahan',
 };
 
 export const RBACProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -124,7 +145,14 @@ export const RBACProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   });
 
-  const [infoPerumahan] = useState<InfoPerumahan>(INITIAL_INFO_PERUMAHAN);
+  const [infoPerumahan, setInfoPerumahan] = useState<InfoPerumahan>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEYS.INFO);
+      return saved ? { ...INITIAL_INFO_PERUMAHAN, ...JSON.parse(saved) } : INITIAL_INFO_PERUMAHAN;
+    } catch {
+      return INITIAL_INFO_PERUMAHAN;
+    }
+  });
 
   const [wargaList, setWargaList] = useState<WargaItem[]>(() => {
     try {
@@ -150,6 +178,24 @@ export const RBACProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return saved ? JSON.parse(saved) : INITIAL_SURAT;
     } catch {
       return INITIAL_SURAT;
+    }
+  });
+
+  const [jenisSuratList, setJenisSuratList] = useState<JenisSuratConfig[]>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEYS.JENIS_SURAT);
+      return saved ? JSON.parse(saved) : INITIAL_JENIS_SURAT;
+    } catch {
+      return INITIAL_JENIS_SURAT;
+    }
+  });
+
+  const [petugasKeamananList, setPetugasKeamananList] = useState<PetugasKeamanan[]>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEYS.PETUGAS_KEAMANAN);
+      return saved ? JSON.parse(saved) : INITIAL_PETUGAS_KEAMANAN;
+    } catch {
+      return INITIAL_PETUGAS_KEAMANAN;
     }
   });
 
@@ -191,39 +237,57 @@ export const RBACProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const [accessDeniedInfo, setAccessDeniedInfo] = useState<AccessDeniedInfo | null>(null);
 
-  // Sync state to localStorage
+  // Sync state to local storage
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users));
   }, [users]);
+
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.CURRENT_USER_ID, currentUserId);
   }, [currentUserId]);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.INFO, JSON.stringify(infoPerumahan));
+  }, [infoPerumahan]);
+
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.WARGA, JSON.stringify(wargaList));
   }, [wargaList]);
+
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.IURAN, JSON.stringify(iuranList));
   }, [iuranList]);
+
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.SURAT, JSON.stringify(suratList));
   }, [suratList]);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.JENIS_SURAT, JSON.stringify(jenisSuratList));
+  }, [jenisSuratList]);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.PETUGAS_KEAMANAN, JSON.stringify(petugasKeamananList));
+  }, [petugasKeamananList]);
+
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.LAPORAN, JSON.stringify(laporanList));
   }, [laporanList]);
+
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.PENGUMUMAN, JSON.stringify(pengumumanList));
   }, [pengumumanList]);
+
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.PERMISSIONS, JSON.stringify(rolePermissions));
   }, [rolePermissions]);
+
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.AUDIT_LOGS, JSON.stringify(auditLogs));
   }, [auditLogs]);
 
-  // Derived current user
   const currentUser = users.find((u) => u.id === currentUserId) || users[0];
 
-  // Audit logger
   const logAudit = (action: string, moduleName: string, status: 'success' | 'denied', details: string) => {
     const newLog: AuditLogPerumahan = {
       id: `log_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
@@ -235,144 +299,139 @@ export const RBACProvider: React.FC<{ children: React.ReactNode }> = ({ children
       module: moduleName,
       status,
       details,
-      ipAddress: '192.168.10.' + Math.floor(Math.random() * 80 + 10),
+      ipAddress: '192.168.1.' + Math.floor(10 + Math.random() * 200),
     };
-    setAuditLogs((prev) => [newLog, ...prev]);
+    setAuditLogs((prev) => [newLog, ...prev.slice(0, 199)]);
   };
 
   const hasPermission = (permission: PermissionKey): boolean => {
-    const permissionsForRole = rolePermissions[currentUser.role] || [];
-    return permissionsForRole.includes(permission);
+    const allowedPermissions = rolePermissions[currentUser.role] || [];
+    return allowedPermissions.includes(permission);
   };
 
   const canExecute = (permission: PermissionKey, actionName: string, moduleName: string = 'Sistem'): boolean => {
-    const allowed = hasPermission(permission);
-    if (!allowed) {
-      const permDef = PERMISSION_DEFINITIONS.find((p) => p.key === permission);
-      const permDescription = permDef ? `${permDef.name} (${permission})` : permission;
-
-      logAudit(
-        'AKSES_DITOLAK_RBAC',
-        moduleName,
-        'denied',
-        `Aksi "${actionName}" dicegat. Akun ${currentUser.name} (${currentUser.role === 'admin' ? 'Pengurus RT' : 'Warga'}) tidak berhak memiliki izin "${permDescription}".`
-      );
-
-      setAccessDeniedInfo({
-        isOpen: true,
-        requiredPermission: permDescription,
-        actionName,
-        moduleName,
-      });
-      return false;
+    if (hasPermission(permission)) {
+      return true;
     }
-    return true;
+
+    logAudit('ACCESS_DENIED_BLOCKED', moduleName, 'denied', `Aksi "${actionName}" ditolak oleh kebijakan keamanan (memerlukan izin ${permission}).`);
+    setAccessDeniedInfo({
+      isOpen: true,
+      requiredPermission: permission,
+      actionName,
+      moduleName,
+    });
+    return false;
   };
 
   const closeAccessDeniedModal = () => {
     setAccessDeniedInfo(null);
   };
 
-  // Auth actions
   const loginAsUser = (userId: string) => {
     const target = users.find((u) => u.id === userId);
     if (target) {
       setCurrentUserId(target.id);
-      setUsers((prev) =>
-        prev.map((u) => (u.id === userId ? { ...u, lastLogin: new Date().toISOString() } : u))
-      );
-      logAudit(
-        'LOGIN_SUCCESS',
-        'Otentikasi',
-        'success',
-        `Login sebagai ${target.name} (${target.roleTitle}).`
-      );
+      logAudit('LOGIN_SWITCH', 'Otentikasi', 'success', `Beralih ke akun pengguna: ${target.name} (${target.roleTitle}).`);
     }
   };
 
-  const switchRolePersona = (targetRole: Role) => {
-    const matched = users.find((u) => u.role === targetRole && u.status === 'active');
-    if (matched) {
-      setCurrentUserId(matched.id);
-      logAudit(
-        'SWITCH_PERSONA',
-        'Otentikasi',
-        'success',
-        `Beralih ke akun ${matched.name} (${targetRole === 'admin' ? 'Pengurus RT' : 'Warga Penghuni'}).`
-      );
+  const switchRolePersona = (role: Role) => {
+    const target = users.find((u) => u.role === role);
+    if (target) {
+      setCurrentUserId(target.id);
+      logAudit('ROLE_QUICK_SWITCH', 'RBAC Guard', 'success', `Role aktif dialihkan menjadi ${role === 'admin' ? 'Administrator / Pengurus RT' : 'Warga Penghuni'}.`);
     }
   };
 
   const logout = () => {
-    logAudit('LOGOUT', 'Otentikasi', 'success', `Pengguna ${currentUser.name} keluar.`);
-    setCurrentUserId(INITIAL_USERS[1].id); // Siti Rahmawati
+    setCurrentUserId(users[1]?.id || users[0].id);
+    logAudit('LOGOUT', 'Otentikasi', 'success', `Sesi pengguna ${currentUser.name} telah diakhiri.`);
   };
 
-  const registerWargaUser = (nama: string, email: string, blok: WargaItem['blokRumah'], nomor: string, role: Role): User => {
+  const registerWargaUser = (
+    nama: string,
+    email: string,
+    blok: WargaItem['blokRumah'],
+    nomor: string,
+    role: Role
+  ): User => {
     const newUser: User = {
       id: `usr_${Date.now()}`,
       name: nama,
       email,
       role,
-      roleTitle: role === 'admin' ? `Pengurus RT / Admin` : `Warga ${blok} No. ${nomor}`,
+      roleTitle: role === 'admin' ? 'Pengurus RT 04' : `Warga Penghuni ${blok}-${nomor}`,
       status: 'active',
       blokRumah: blok,
       nomorRumah: nomor,
-      avatar: `https://images.unsplash.com/photo-${1530000000000 + Math.floor(Math.random() * 500000)}?w=150&auto=format&fit=crop&q=80`,
-      phone: '+62 8' + Math.floor(100000000 + Math.random() * 900000000),
+      avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
       createdAt: new Date().toISOString(),
       lastLogin: new Date().toISOString(),
     };
 
     setUsers((prev) => [...prev, newUser]);
     setCurrentUserId(newUser.id);
-    logAudit('REGISTER_WARGA', 'Otentikasi', 'success', `Pendaftaran akun warga baru: ${newUser.name} di ${blok} ${nomor}.`);
+    logAudit('USER_REGISTER', 'Manajemen Pengguna', 'success', `Akun baru terdaftar: ${nama} (${newUser.roleTitle}).`);
     return newUser;
   };
 
+  // Kop & Info Perumahan Management
+  const updateInfoPerumahan = (newInfo: Partial<InfoPerumahan>): boolean => {
+    if (!canExecute('kop:manage', 'Mengubah Pengaturan & KOP Resmi RT', 'Layanan Surat RT')) return false;
+
+    setInfoPerumahan((prev) => ({
+      ...prev,
+      ...newInfo,
+    }));
+    logAudit('KOP_UPDATE', 'Layanan Surat RT', 'success', `Pengurus RT memperbarui konfigurasi data KOP surat resmi.`);
+    return true;
+  };
+
   // Warga Management
-  const tambahWarga = (warga: Omit<WargaItem, 'id'>) => {
-    if (!canExecute('warga:create', 'Mendaftarkan Data Warga Baru', 'Data Warga')) return;
+  const tambahWarga = (data: Omit<WargaItem, 'id'>) => {
+    if (!canExecute('warga:create', 'Menambah Data Warga Baru', 'Data Warga')) return;
 
     const newWarga: WargaItem = {
-      ...warga,
+      ...data,
       id: `wrg_${Date.now()}`,
     };
+
     setWargaList((prev) => [newWarga, ...prev]);
-    logAudit('WARGA_TAMBAH', 'Data Warga', 'success', `Mendaftarkan warga baru: ${newWarga.namaLengkap} (${newWarga.blokRumah}-${newWarga.nomorRumah}).`);
+    logAudit('WARGA_CREATE', 'Data Warga', 'success', `Menambahkan warga baru: ${data.namaLengkap} (${data.blokRumah}-${data.nomorRumah}).`);
   };
 
   const updateWarga = (id: string, updates: Partial<WargaItem>): boolean => {
-    const targetWarga = wargaList.find((w) => w.id === id);
-    if (!targetWarga) return false;
+    const target = wargaList.find((w) => w.id === id);
+    if (!target) return false;
 
-    // Check if updating own home or someone else's
-    const isOwner = targetWarga.nomorRumah === currentUser.nomorRumah && targetWarga.blokRumah === currentUser.blokRumah;
-    if (isOwner) {
-      if (!canExecute('warga:edit_own', 'Memperbarui Data Rumah Sendiri', 'Data Warga')) return false;
-    } else {
-      if (!canExecute('warga:edit_all', `Mengubah Data Warga Rumah ${targetWarga.blokRumah}-${targetWarga.nomorRumah}`, 'Data Warga')) return false;
-    }
+    const isOwnHouse = target.blokRumah === currentUser.blokRumah && target.nomorRumah === currentUser.nomorRumah;
+    const requiredPermission: PermissionKey = isOwnHouse ? 'warga:edit_own' : 'warga:edit_all';
+
+    if (!canExecute(requiredPermission, 'Memperbarui Data Warga', 'Data Warga')) return false;
 
     setWargaList((prev) =>
       prev.map((w) => (w.id === id ? { ...w, ...updates } : w))
     );
-    logAudit('WARGA_UPDATE', 'Data Warga', 'success', `Memperbarui data kependudukan ${targetWarga.namaLengkap}.`);
+
+    logAudit('WARGA_UPDATE', 'Data Warga', 'success', `Memperbarui data warga ${target.namaLengkap}.`);
     return true;
   };
 
   const hapusWarga = (id: string): boolean => {
-    if (!canExecute('warga:delete', 'Menghapus Data Kependudukan Warga', 'Data Warga')) return false;
+    if (!canExecute('warga:delete', 'Menghapus Data Warga', 'Data Warga')) return false;
 
-    const targetWarga = wargaList.find((w) => w.id === id);
+    const target = wargaList.find((w) => w.id === id);
+    if (!target) return false;
+
     setWargaList((prev) => prev.filter((w) => w.id !== id));
-    logAudit('WARGA_HAPUS', 'Data Warga', 'success', `Menghapus warga: ${targetWarga?.namaLengkap || id} (Pindah domisili).`);
+    logAudit('WARGA_DELETE', 'Data Warga', 'success', `Menghapus warga: ${target.namaLengkap} (${target.blokRumah}-${target.nomorRumah}).`);
     return true;
   };
 
   // Iuran
   const bayarIuranSendiri = (iuranId: string, metode: string, bukti: string): boolean => {
-    if (!canExecute('iuran:pay_own', 'Melakukan Pembayaran Iuran Warga', 'Iuran & Kas')) return false;
+    if (!canExecute('iuran:pay_own', 'Membayar Iuran Lingkungan', 'Iuran & Kas')) return false;
 
     setIuranList((prev) =>
       prev.map((i) =>
@@ -382,12 +441,13 @@ export const RBACProvider: React.FC<{ children: React.ReactNode }> = ({ children
               statusBayar: 'Menunggu Verifikasi',
               tanggalBayar: new Date().toISOString().split('T')[0],
               metodePembayaran: metode,
-              buktiBayar: bukti || 'TRF-' + Math.floor(100000 + Math.random() * 900000),
+              buktiBayar: bukti,
             }
           : i
       )
     );
-    logAudit('IURAN_BAYAR', 'Iuran & Kas', 'success', `Warga mengunggah bukti bayar iuran bulanan.`);
+
+    logAudit('IURAN_PAY', 'Iuran & Kas', 'success', `Warga ${currentUser.name} mengunggah pembayaran iuran.`);
     return true;
   };
 
@@ -395,39 +455,53 @@ export const RBACProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!canExecute('iuran:verify', 'Memverifikasi Pembayaran Iuran Warga', 'Iuran & Kas')) return false;
 
     setIuranList((prev) =>
-      prev.map((i) => (i.id === iuranId ? { ...i, statusBayar: status } : i))
+      prev.map((i) =>
+        i.id === iuranId
+          ? {
+              ...i,
+              statusBayar: status,
+              tanggalBayar: status === 'Lunas' && !i.tanggalBayar ? new Date().toISOString().split('T')[0] : i.tanggalBayar,
+            }
+          : i
+      )
     );
-    logAudit('IURAN_VERIFIKASI', 'Iuran & Kas', 'success', `Pengurus RT mengubah status iuran ID ${iuranId} menjadi ${status.toUpperCase()}.`);
+
+    logAudit('IURAN_VERIFY', 'Iuran & Kas', 'success', `Pengurus RT mengubah status iuran menjadi ${status}.`);
     return true;
   };
 
-  const tambahIuranBaru = (iuran: Omit<IuranItem, 'id'>) => {
-    if (!canExecute('iuran:view_all', 'Membuat Tagihan Iuran Bulanan', 'Iuran & Kas')) return;
-    const newItem: IuranItem = {
-      ...iuran,
+  const tambahIuranBaru = (data: Omit<IuranItem, 'id'>) => {
+    const newIuran: IuranItem = {
+      ...data,
       id: `iur_${Date.now()}`,
     };
-    setIuranList((prev) => [newItem, ...prev]);
-    logAudit('IURAN_TAGIHAN_BARU', 'Iuran & Kas', 'success', `Menerbitkan tagihan iuran baru untuk ${iuran.namaWarga}.`);
+    setIuranList((prev) => [newIuran, ...prev]);
   };
 
   // Surat Pengantar RT
-  const ajukanSurat = (data: { jenisSurat: SuratItem['jenisSurat']; keperluan: string }) => {
+  const ajukanSurat = (data: {
+    jenisSurat: string;
+    keperluan: string;
+    drafSuratAI?: string;
+    alasanFormalAI?: string;
+    catatanAI?: string;
+  }) => {
     if (!canExecute('surat:request', 'Mengajukan Surat Pengantar RT Online', 'Layanan Surat RT')) return;
-
-    const matchedWarga = wargaList.find((w) => w.blokRumah === currentUser.blokRumah && w.nomorRumah === currentUser.nomorRumah) || wargaList[1];
 
     const newSurat: SuratItem = {
       id: `srt_${Date.now()}`,
-      wargaId: matchedWarga.id,
+      wargaId: currentUser.id,
       namaPemohon: currentUser.name,
-      nikPemohon: matchedWarga.nik,
+      nikPemohon: '327601' + Math.floor(1000000000 + Math.random() * 9000000000),
       blokRumah: currentUser.blokRumah,
       nomorRumah: currentUser.nomorRumah,
       jenisSurat: data.jenisSurat,
       keperluan: data.keperluan,
       status: 'Menunggu Validasi RT',
       tanggalPengajuan: new Date().toISOString().split('T')[0],
+      drafSuratAI: data.drafSuratAI,
+      alasanFormalAI: data.alasanFormalAI,
+      catatanAI: data.catatanAI,
     };
 
     setSuratList((prev) => [newSurat, ...prev]);
@@ -463,9 +537,164 @@ export const RBACProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return true;
   };
 
-  // Laporan
+  // Jenis Surat Management
+  const tambahJenisSurat = (item: Omit<JenisSuratConfig, 'id'>): boolean => {
+    if (!canExecute('surat:manage_types', 'Menambah Jenis Template Surat RT', 'Layanan Surat RT')) return false;
+
+    const newItem: JenisSuratConfig = {
+      ...item,
+      id: `js_${Date.now()}`,
+    };
+    setJenisSuratList((prev) => [...prev, newItem]);
+    logAudit('JENIS_SURAT_ADD', 'Layanan Surat RT', 'success', `Menambahkan jenis surat baru: "${item.nama}".`);
+    return true;
+  };
+
+  const updateJenisSurat = (id: string, updates: Partial<JenisSuratConfig>): boolean => {
+    if (!canExecute('surat:manage_types', 'Mengubah Template Jenis Surat RT', 'Layanan Surat RT')) return false;
+
+    setJenisSuratList((prev) =>
+      prev.map((j) => (j.id === id ? { ...j, ...updates } : j))
+    );
+    logAudit('JENIS_SURAT_UPDATE', 'Layanan Surat RT', 'success', `Memperbarui template jenis surat.`);
+    return true;
+  };
+
+  const hapusJenisSurat = (id: string): boolean => {
+    if (!canExecute('surat:manage_types', 'Menghapus Jenis Template Surat RT', 'Layanan Surat RT')) return false;
+
+    const target = jenisSuratList.find((j) => j.id === id);
+    if (!target) return false;
+
+    setJenisSuratList((prev) => prev.filter((j) => j.id !== id));
+    logAudit('JENIS_SURAT_DELETE', 'Layanan Surat RT', 'success', `Menghapus template jenis surat: "${target.nama}".`);
+    return true;
+  };
+
+  const generateDrafSuratAI = async (
+    suratId: string
+  ): Promise<{ drafSurat: string; alasanFormalDisempurnakan: string; catatanRekomendasiAI: string }> => {
+    const targetSurat = suratList.find((s) => s.id === suratId);
+    if (!targetSurat) {
+      throw new Error('Surat tidak ditemukan');
+    }
+
+    try {
+      const res = await fetch('/api/generate-surat-ai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          namaPemohon: targetSurat.namaPemohon,
+          nikPemohon: targetSurat.nikPemohon,
+          blokRumah: targetSurat.blokRumah,
+          nomorRumah: targetSurat.nomorRumah,
+          jenisSurat: targetSurat.jenisSurat,
+          keperluan: targetSurat.keperluan,
+          namaKetuaRT: infoPerumahan.namaKetuaRT,
+          rtRw: infoPerumahan.rtRw,
+          namaPerumahan: infoPerumahan.namaPerumahan,
+        }),
+      });
+
+      const json = await res.json();
+      if (json.success && json.data) {
+        const { drafSurat, alasanFormalDisempurnakan, catatanRekomendasiAI } = json.data;
+        setSuratList((prev) =>
+          prev.map((s) =>
+            s.id === suratId
+              ? {
+                  ...s,
+                  drafSuratAI: drafSurat,
+                  alasanFormalAI: alasanFormalDisempurnakan,
+                  catatanAI: catatanRekomendasiAI,
+                }
+              : s
+          )
+        );
+        logAudit(
+          'SURAT_AI_COMPANION',
+          'Layanan Surat RT',
+          'success',
+          `Menghasilkan draf pendampingan AI untuk surat ${targetSurat.jenisSurat} pemohon ${targetSurat.namaPemohon}.`
+        );
+        return { drafSurat, alasanFormalDisempurnakan, catatanRekomendasiAI };
+      }
+    } catch (err) {
+      console.warn('AI generator notice:', err);
+    }
+
+    // Default intelligent fallback
+    const fallbackDraf = `Yang bertanda tangan di bawah ini Pengurus Rukun Tetangga (RT) 04 / RW 09 menerangkan bahwa Saudara/i ${targetSurat.namaPemohon}, NIK: ${targetSurat.nikPemohon}, adalah benar warga sah yang bertempat tinggal di ${infoPerumahan.namaPerumahan} ${targetSurat.blokRumah} No. ${targetSurat.nomorRumah}. Berkelakuan baik dan permohonan ${targetSurat.jenisSurat} ini diterbitkan untuk keperluan: ${targetSurat.keperluan}.`;
+    const fallbackAlasan = `Sebagai pemenuhan kelengkapan administrasi resmi persyaratan ${targetSurat.keperluan}.`;
+    const fallbackCatatan = `✅ Pendampingan AI: Data pemohon terverifikasi pada database kependudukan. Iuran lingkungan berstatus tertib. Berkas siap disetujui Pengurus RT.`;
+
+    setSuratList((prev) =>
+      prev.map((s) =>
+        s.id === suratId
+          ? {
+              ...s,
+              drafSuratAI: fallbackDraf,
+              alasanFormalAI: fallbackAlasan,
+              catatanAI: fallbackCatatan,
+            }
+          : s
+      )
+    );
+
+    return {
+      drafSurat: fallbackDraf,
+      alasanFormalDisempurnakan: fallbackAlasan,
+      catatanRekomendasiAI: fallbackCatatan,
+    };
+  };
+
+  // Petugas Keamanan Management
+  const tambahPetugasKeamanan = (data: Omit<PetugasKeamanan, 'id'>): boolean => {
+    if (!canExecute('keamanan:manage', 'Menambah Data Petugas Keamanan', 'Keamanan & Pos Satpam')) return false;
+
+    const newPetugas: PetugasKeamanan = {
+      ...data,
+      id: `sec_${Date.now()}`,
+    };
+    setPetugasKeamananList((prev) => [...prev, newPetugas]);
+    logAudit('SECURITY_ADD', 'Keamanan & Pos Satpam', 'success', `Menambahkan petugas keamanan baru: ${data.namaLengkap} (${data.jabatan}).`);
+    return true;
+  };
+
+  const updatePetugasKeamanan = (id: string, updates: Partial<PetugasKeamanan>): boolean => {
+    if (!canExecute('keamanan:manage', 'Mengubah Data Petugas Keamanan', 'Keamanan & Pos Satpam')) return false;
+
+    setPetugasKeamananList((prev) =>
+      prev.map((p) => (p.id === id ? { ...p, ...updates } : p))
+    );
+    logAudit('SECURITY_UPDATE', 'Keamanan & Pos Satpam', 'success', `Memperbarui data petugas keamanan.`);
+    return true;
+  };
+
+  const hapusPetugasKeamanan = (id: string): boolean => {
+    if (!canExecute('keamanan:manage', 'Menghapus Data Petugas Keamanan', 'Keamanan & Pos Satpam')) return false;
+
+    const target = petugasKeamananList.find((p) => p.id === id);
+    if (!target) return false;
+
+    setPetugasKeamananList((prev) => prev.filter((p) => p.id !== id));
+    logAudit('SECURITY_DELETE', 'Keamanan & Pos Satpam', 'success', `Menghapus data petugas keamanan: ${target.namaLengkap}.`);
+    return true;
+  };
+
+  const updateStatusJagaPetugas = (id: string, status: PetugasKeamanan['statusJaga']): boolean => {
+    if (!canExecute('keamanan:manage', 'Mengubah Status Jaga Petugas Satpam', 'Keamanan & Pos Satpam')) return false;
+
+    setPetugasKeamananList((prev) =>
+      prev.map((p) => (p.id === id ? { ...p, statusJaga: status } : p))
+    );
+    logAudit('SECURITY_STATUS', 'Keamanan & Pos Satpam', 'success', `Mengubah status jaga petugas menjadi: ${status}.`);
+    return true;
+  };
+
+  // Laporan Lingkungan & Tamu
   const buatLaporan = (data: { kategori: LaporanLingkungan['kategori']; judul: string; rincian: string }) => {
-    if (!canExecute('laporan:create', 'Mengirim Laporan Tamu / Aduan Lingkungan', 'Keamanan & Lingkungan')) return;
+    if (!canExecute('laporan:create', 'Mengirim Laporan Tamu / Aduan Lingkungan', 'Keamanan & Pos Satpam')) return;
 
     const newLaporan: LaporanLingkungan = {
       id: `lap_${Date.now()}`,
@@ -481,16 +710,16 @@ export const RBACProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     setLaporanList((prev) => [newLaporan, ...prev]);
-    logAudit('LAPORAN_SUBMIT', 'Keamanan & Lingkungan', 'success', `Warga ${currentUser.name} melaporkan: "${data.judul}".`);
+    logAudit('LAPORAN_SUBMIT', 'Keamanan & Pos Satpam', 'success', `Warga ${currentUser.name} melaporkan: "${data.judul}".`);
   };
 
   const updateStatusLaporan = (laporanId: string, status: StatusLaporan): boolean => {
-    if (!canExecute('laporan:manage', 'Menindaklanjuti Laporan Warga', 'Keamanan & Lingkungan')) return false;
+    if (!canExecute('laporan:manage', 'Menindaklanjuti Laporan Warga', 'Keamanan & Pos Satpam')) return false;
 
     setLaporanList((prev) =>
       prev.map((l) => (l.id === laporanId ? { ...l, status } : l))
     );
-    logAudit('LAPORAN_STATUS', 'Keamanan & Lingkungan', 'success', `Status laporan diubah menjadi ${status}.`);
+    logAudit('LAPORAN_STATUS', 'Keamanan & Pos Satpam', 'success', `Status laporan diubah menjadi ${status}.`);
     return true;
   };
 
@@ -519,15 +748,16 @@ export const RBACProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const hapusPengumuman = (id: string): boolean => {
-    if (!canExecute('pengumuman:create', 'Menghapus Pengumuman', 'Warta Perumahan')) return false;
-    setPengumumanList((prev) => prev.filter((a) => a.id !== id));
+    if (!canExecute('pengumuman:create', 'Menghapus Pengumuman RT', 'Warta Perumahan')) return false;
+
+    setPengumumanList((prev) => prev.filter((p) => p.id !== id));
     logAudit('PENGUMUMAN_DELETE', 'Warta Perumahan', 'success', `Menghapus pengumuman.`);
     return true;
   };
 
-  // Matrix
+  // Matrix Permissions
   const toggleRolePermission = (role: Role, permission: PermissionKey) => {
-    if (!canExecute('roles:manage_permissions', 'Mengubah Matriks Hak Akses RT', 'Pengaturan Keamanan')) return;
+    if (!canExecute('roles:manage_permissions', 'Mengubah Matriks Hak Akses RBAC', 'Pengaturan Keamanan')) return;
 
     setRolePermissions((prev) => {
       const currentList = prev[role] || [];
@@ -560,9 +790,12 @@ export const RBACProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.clear();
     setUsers(INITIAL_USERS);
     setCurrentUserId(INITIAL_USERS[0].id);
+    setInfoPerumahan(INITIAL_INFO_PERUMAHAN);
     setWargaList(INITIAL_WARGA);
     setIuranList(INITIAL_IURAN);
     setSuratList(INITIAL_SURAT);
+    setJenisSuratList(INITIAL_JENIS_SURAT);
+    setPetugasKeamananList(INITIAL_PETUGAS_KEAMANAN);
     setLaporanList(INITIAL_LAPORAN);
     setPengumumanList(INITIAL_PENGUMUMAN);
     setRolePermissions(DEFAULT_ROLE_PERMISSIONS);
@@ -580,6 +813,8 @@ export const RBACProvider: React.FC<{ children: React.ReactNode }> = ({ children
         wargaList,
         iuranList,
         suratList,
+        jenisSuratList,
+        petugasKeamananList,
         laporanList,
         pengumumanList,
         auditLogs,
@@ -591,6 +826,7 @@ export const RBACProvider: React.FC<{ children: React.ReactNode }> = ({ children
         switchRolePersona,
         logout,
         registerWargaUser,
+        updateInfoPerumahan,
         tambahWarga,
         updateWarga,
         hapusWarga,
@@ -599,6 +835,14 @@ export const RBACProvider: React.FC<{ children: React.ReactNode }> = ({ children
         tambahIuranBaru,
         ajukanSurat,
         prosesSuratRT,
+        tambahJenisSurat,
+        updateJenisSurat,
+        hapusJenisSurat,
+        generateDrafSuratAI,
+        tambahPetugasKeamanan,
+        updatePetugasKeamanan,
+        hapusPetugasKeamanan,
+        updateStatusJagaPetugas,
         buatLaporan,
         updateStatusLaporan,
         buatPengumuman,

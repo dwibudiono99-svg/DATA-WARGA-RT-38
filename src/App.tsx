@@ -18,6 +18,7 @@ import { DataWargaManagement } from './components/WargaView/DataWargaManagement'
 import { IuranManagement } from './components/WargaView/IuranManagement';
 import { LayananSuratRT } from './components/WargaView/LayananSuratRT';
 import { LaporanLingkunganView } from './components/WargaView/LaporanLingkunganView';
+import { PetugasKeamananView } from './components/PetugasKeamananView';
 import { PermissionMatrix } from './components/AdminView/PermissionMatrix';
 import { AuditLogViewer } from './components/AdminView/AuditLogViewer';
 
@@ -107,6 +108,7 @@ function AppContent() {
             )}
             {currentTab === 'iuran' && <IuranManagement />}
             {currentTab === 'surat' && <LayananSuratRT />}
+            {currentTab === 'keamanan' && <PetugasKeamananView />}
             {currentTab === 'laporan' && <LaporanLingkunganView />}
             {currentTab === 'matrix' && <PermissionMatrix />}
             {currentTab === 'audit' && <AuditLogViewer />}
@@ -123,6 +125,7 @@ function AppContent() {
             {currentTab === 'data-saya' && <DataRumahSaya />}
             {currentTab === 'bayar-iuran' && <IuranManagement />}
             {currentTab === 'ajukan-surat' && <LayananSuratRT />}
+            {currentTab === 'keamanan' && <PetugasKeamananView />}
             {currentTab === 'lapor-tamu' && <LaporanLingkunganView />}
             {currentTab === 'sandbox' && <WargaSandbox />}
           </>

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useRBAC } from '../../context/RBACContext';
 import {
   Building2,
@@ -17,9 +17,15 @@ import {
   Sparkles,
   Camera,
   Scan,
+  ShieldCheck,
+  Sliders,
+  Phone,
+  MessageCircle,
 } from 'lucide-react';
 import { KopDanLogoRT } from '../KopDanLogoRT';
 import { WebHostingBanner } from '../WebHostingBanner';
+import { EditKopRTModal } from '../EditKopRTModal';
+import { JenisSuratManagerModal } from '../JenisSuratManagerModal';
 
 interface RTDashboardProps {
   onNavigateTab: (tab: string) => void;
@@ -41,7 +47,14 @@ export const RTDashboard: React.FC<RTDashboardProps> = ({
     laporanList,
     infoPerumahan,
     currentUser,
+    petugasKeamananList,
+    jenisSuratList,
   } = useRBAC();
+
+  const [isEditKopOpen, setIsEditKopOpen] = useState(false);
+  const [isJenisSuratOpen, setIsJenisSuratOpen] = useState(false);
+
+  const satpamBertugas = petugasKeamananList.filter((p) => p.statusJaga === 'Sedang Bertugas');
 
   const totalWarga = wargaList.length;
   const totalKK = wargaList.filter((w) => w.statusKeluarga === 'Kepala Keluarga').length;
@@ -64,10 +77,62 @@ export const RTDashboard: React.FC<RTDashboardProps> = ({
   return (
     <div className="space-y-6">
       {/* 1. Official Letterhead & Logo (KOP RESMI RT 04) */}
-      <KopDanLogoRT onOpenScanKK={onOpenScanKK} onOpenWebHosting={onOpenPrintPoster} />
+      <KopDanLogoRT
+        onOpenScanKK={onOpenScanKK}
+        onOpenWebHosting={onOpenPrintPoster}
+        onOpenEditKop={() => setIsEditKopOpen(true)}
+      />
 
       {/* Web Hosting Portal Address & Scannable QR Code */}
       <WebHostingBanner onOpenPrintPoster={onOpenPrintPoster} />
+
+      {/* Quick Admin Control Center: KOP RT, Jenis Surat, and Petugas Keamanan */}
+      <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h3 className="font-extrabold text-sm text-slate-900 flex items-center gap-2">
+            <Building2 className="w-4 h-4 text-emerald-600" />
+            <span>Pusat Kendali Administrasi Pengurus RT</span>
+          </h3>
+          <p className="text-xs text-slate-500 mt-0.5">
+            Olah data KOP resmi, format jenis & persyaratan surat, serta pantau kontak petugas keamanan lingkungan.
+          </p>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2.5">
+          <button
+            type="button"
+            onClick={() => setIsEditKopOpen(true)}
+            className="px-3.5 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-300 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
+            title="Edit KOP Surat Resmi RT"
+          >
+            <Building2 className="w-4 h-4 text-emerald-700" />
+            <span>Edit KOP RT</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setIsJenisSuratOpen(true)}
+            className="px-3.5 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-900 border border-indigo-200 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
+            title="Kelola & Edit Jenis Surat"
+          >
+            <Sliders className="w-4 h-4 text-indigo-600" />
+            <span>Kelola Jenis Surat ({jenisSuratList.length})</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => onNavigateTab('keamanan')}
+            className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer shadow-md shadow-slate-900/10"
+            title="Data & Kontak Petugas Keamanan"
+          >
+            <ShieldCheck className="w-4 h-4 text-emerald-400" />
+            <span>Petugas Keamanan</span>
+            <span className="ml-1 px-1.5 py-0.2 bg-emerald-500 text-slate-950 font-black text-[10px] rounded-full">
+              {satpamBertugas.length} Siaga
+            </span>
+          </button>
+        </div>
+      </div>
 
       {/* 2. Welcome Banner */}
       <div className="bg-gradient-to-r from-indigo-950 via-slate-900 to-indigo-900 rounded-3xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden border border-indigo-800/40">
@@ -392,6 +457,16 @@ export const RTDashboard: React.FC<RTDashboardProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Admin Modals */}
+      <EditKopRTModal
+        isOpen={isEditKopOpen}
+        onClose={() => setIsEditKopOpen(false)}
+      />
+      <JenisSuratManagerModal
+        isOpen={isJenisSuratOpen}
+        onClose={() => setIsJenisSuratOpen(false)}
+      />
     </div>
   );
 };

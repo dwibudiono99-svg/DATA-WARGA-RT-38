@@ -16,16 +16,24 @@ import {
   Check,
   QrCode,
 } from 'lucide-react';
+import { EditKopRTModal } from './EditKopRTModal';
 
 interface KopDanLogoRTProps {
   onOpenScanKK?: () => void;
   onOpenWebHosting?: () => void;
+  onOpenEditKop?: () => void;
 }
 
-export const KopDanLogoRT: React.FC<KopDanLogoRTProps> = ({ onOpenScanKK, onOpenWebHosting }) => {
+export const KopDanLogoRT: React.FC<KopDanLogoRTProps> = ({
+  onOpenScanKK,
+  onOpenWebHosting,
+  onOpenEditKop,
+}) => {
   const { infoPerumahan, currentUser } = useRBAC();
+  const isAdmin = currentUser.role === 'admin';
   const [isCompact, setIsCompact] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [isInternalEditKopOpen, setIsInternalEditKopOpen] = useState(false);
 
   const defaultHostingUrl =
     typeof window !== 'undefined'
@@ -128,12 +136,12 @@ export const KopDanLogoRT: React.FC<KopDanLogoRTProps> = ({ onOpenScanKK, onOpen
                   PENGURUS RUKUN TETANGGA
                 </span>
                 <span className="text-[10px] font-bold text-slate-500">
-                  SK Kelurahan No. 142/SK-RT/2024
+                  {infoPerumahan.nomorSK || 'SK Kelurahan No. 142/SK-RT/2024'}
                 </span>
               </div>
 
               <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight leading-tight">
-                RUKUN TETANGGA 04 / RUKUN WARGA 09
+                RUKUN TETANGGA {infoPerumahan.rtRw.split('/')[0]?.trim()} / RUKUN WARGA {infoPerumahan.rtRw.split('/')[1]?.trim()}
               </h1>
               
               <h2 className="text-sm sm:text-base font-extrabold text-emerald-800 tracking-normal">
@@ -141,18 +149,18 @@ export const KopDanLogoRT: React.FC<KopDanLogoRTProps> = ({ onOpenScanKK, onOpen
               </h2>
 
               <p className="text-xs text-slate-600 leading-relaxed font-medium">
-                Kelurahan {infoPerumahan.kelurahan}, Kecamatan {infoPerumahan.kecamatan}, {infoPerumahan.kota} 16413
+                Kelurahan {infoPerumahan.kelurahan}, Kecamatan {infoPerumahan.kecamatan}, {infoPerumahan.kota} {infoPerumahan.kodePos}
               </p>
 
               {!isCompact && (
                 <div className="flex flex-wrap items-center justify-center sm:justify-start gap-x-4 gap-y-1 text-[11px] text-slate-500 pt-1">
                   <span className="flex items-center gap-1">
                     <MapPin className="w-3.5 h-3.5 text-emerald-600" />
-                    <span>Sekretariat: Balai Pertemuan & Pos Satpam Utama</span>
+                    <span>Sekretariat: {infoPerumahan.alamatSekretariat}</span>
                   </span>
                   <span className="flex items-center gap-1">
                     <Phone className="w-3.5 h-3.5 text-emerald-600" />
-                    <span>Hotline RT: (021) 7788-9900 / 0812-3456-7890</span>
+                    <span>Hotline RT: {infoPerumahan.hotlineRT}</span>
                   </span>
                 </div>
               )}
@@ -186,6 +194,22 @@ export const KopDanLogoRT: React.FC<KopDanLogoRTProps> = ({ onOpenScanKK, onOpen
                   >
                     <QrCode className="w-3 h-3 text-indigo-600" />
                     <span>QR Code Warga</span>
+                  </button>
+                )}
+
+                {/* Admin Quick Edit KOP Button */}
+                {isAdmin && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (onOpenEditKop) onOpenEditKop();
+                      else setIsInternalEditKopOpen(true);
+                    }}
+                    className="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 border border-amber-300 rounded-xl text-[11px] font-bold text-amber-900 flex items-center gap-1 transition-colors cursor-pointer shadow-2xs"
+                    title="Edit KOP Surat Resmi RT"
+                  >
+                    <Building2 className="w-3 h-3 text-amber-700" />
+                    <span>Edit KOP RT</span>
                   </button>
                 )}
               </div>
@@ -231,6 +255,12 @@ export const KopDanLogoRT: React.FC<KopDanLogoRTProps> = ({ onOpenScanKK, onOpen
           <div className="h-[0.75px] bg-slate-900 w-full" />
         </div>
       </div>
+
+      {/* Internal Kop RT Editor Modal */}
+      <EditKopRTModal
+        isOpen={isInternalEditKopOpen}
+        onClose={() => setIsInternalEditKopOpen(false)}
+      />
     </div>
   );
 };

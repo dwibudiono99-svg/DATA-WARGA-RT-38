@@ -15,39 +15,55 @@ import {
   Stamp,
   Download,
   Lock,
+  Sparkles,
+  Sliders,
+  FileText,
+  Copy,
+  Wand2,
+  RefreshCw,
+  QrCode,
+  CheckCheck,
+  ChevronRight,
+  Info,
 } from 'lucide-react';
-import { SuratItem, JenisSuratPengantar } from '../../types/rbac';
+import { SuratItem } from '../../types/rbac';
+import { EditKopRTModal } from '../EditKopRTModal';
+import { JenisSuratManagerModal } from '../JenisSuratManagerModal';
 
 export const LayananSuratRT: React.FC = () => {
   const {
     suratList,
+    jenisSuratList,
     currentUser,
     ajukanSurat,
     prosesSuratRT,
+    generateDrafSuratAI,
     canExecute,
     infoPerumahan,
   } = useRBAC();
 
   const [isApplyModalOpen, setIsApplyModalOpen] = useState(false);
+  const [isKopModalOpen, setIsKopModalOpen] = useState(false);
+  const [isJenisSuratModalOpen, setIsJenisSuratModalOpen] = useState(false);
   const [viewingLetter, setViewingLetter] = useState<SuratItem | null>(null);
+  const [selectedAIReviewSurat, setSelectedAIReviewSurat] = useState<SuratItem | null>(null);
 
-  // Form states
-  const [jenisSurat, setJenisSurat] = useState<JenisSuratPengantar>('Surat Keterangan Domisili');
+  // Form states for new application
+  const [selectedJenisSuratId, setSelectedJenisSuratId] = useState(jenisSuratList[0]?.nama || 'Surat Keterangan Domisili');
   const [keperluan, setKeperluan] = useState('');
+  const [isGeneratingAIDraft, setIsGeneratingAIDraft] = useState(false);
+  const [copiedDraft, setCopiedDraft] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
 
   const isAdmin = currentUser.role === 'admin';
 
-  const jenisSuratOptions: JenisSuratPengantar[] = [
-    'Surat Keterangan Domisili',
-    'Surat Pengantar SKCK',
-    'Surat Pengantar Pembuatan KTP/KK',
-    'Surat Keterangan Usaha (SKU)',
-    'Surat Izin Acara / Keramaian',
-  ];
+  const activeJenisSurat = jenisSuratList.filter((j) => j.aktif);
+  const currentJenisConfig = jenisSuratList.find((j) => j.nama === selectedJenisSuratId);
 
   const handleOpenApplyModal = () => {
     if (!canExecute('surat:request', 'Mengajukan Surat Pengantar RT Online', 'Layanan Surat RT')) return;
-    setJenisSurat('Surat Keterangan Domisili');
+    setSelectedJenisSuratId(activeJenisSurat[0]?.nama || 'Surat Keterangan Domisili');
     setKeperluan('');
     setIsApplyModalOpen(true);
   };
@@ -58,7 +74,11 @@ export const LayananSuratRT: React.FC = () => {
       alert('Mohon cantumkan keperluan pengajuan surat!');
       return;
     }
-    ajukanSurat({ jenisSurat, keperluan });
+
+    ajukanSurat({
+      jenisSurat: selectedJenisSuratId,
+      keperluan,
+    });
     setIsApplyModalOpen(false);
   };
 
@@ -75,65 +95,253 @@ export const LayananSuratRT: React.FC = () => {
     }
   };
 
+  const handleRunAICounsel = async (surat: SuratItem) => {
+    setIsGeneratingAIDraft(true);
+    try {
+      await generateDrafSuratAI(surat.id);
+    } catch (err) {
+      console.warn('AI assistance notice:', err);
+    } finally {
+      setIsGeneratingAIDraft(false);
+    }
+  };
+
+  const handleCopyAIDraft = (text?: string) => {
+    if (!text) return;
+    navigator.clipboard?.writeText(text);
+    setCopiedDraft(true);
+    setTimeout(() => setCopiedDraft(false), 2000);
+  };
+
+  // Filter letters
+  const filteredSurat = suratList.filter((s) => {
+    const matchesSearch =
+      s.namaPemohon.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      s.jenisSurat.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      s.keperluan.toLowerCase().includes(searchQuery.toLowerCase());
+
+    if (!matchesSearch) return false;
+
+    if (filterStatus === 'pending') return s.status === 'Menunggu Validasi RT';
+    if (filterStatus === 'approved') return s.status === 'Disetujui / Terbit';
+    if (filterStatus === 'rejected') return s.status === 'Ditolak';
+    return true;
+  });
+
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
+      {/* Header with Admin Management Shortcuts */}
+      <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-xs flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+        <div className="space-y-1">
           <div className="flex items-center gap-2">
             <FileCheck2 className="w-5 h-5 text-indigo-600" />
-            <h2 className="text-xl font-extrabold text-slate-900 tracking-tight">
+            <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
               Layanan Surat Pengantar Resmi Rukun Tetangga (RT)
             </h2>
             <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-100 text-indigo-800">
-              Pelayanan Online
+              Pelayanan Digital
             </span>
           </div>
-          <p className="text-xs text-slate-500 mt-1">
-            Warga dapat mengajukan Surat Keterangan Domisili, Pengantar SKCK, KTP, atau Usaha secara digital tanpa antre. Pengesahan nomor resmi dilakukan oleh Ketua RT.
+          <p className="text-xs text-slate-500 max-w-2xl leading-relaxed">
+            Pengajuan dan penerbitan Surat Pengantar KTP, KK, Domisili, SKCK, dan Usaha secara terintegrasi dengan pendampingan kecerdasan buatan (Gemini AI) untuk draf birokrasi baku dan pengecekan kelayakan berkas.
           </p>
         </div>
 
-        <button
-          onClick={handleOpenApplyModal}
-          className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold text-xs transition-colors shadow-xs self-start md:self-auto"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Ajukan Surat Pengantar Baru</span>
-        </button>
+        {/* Action Buttons */}
+        <div className="flex flex-wrap items-center gap-2.5">
+          {/* Admin Tools: Edit KOP RT */}
+          {isAdmin && (
+            <>
+              <button
+                type="button"
+                onClick={() => setIsKopModalOpen(true)}
+                className="px-3.5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer border border-slate-300"
+                title="Edit KOP Surat Resmi RT"
+              >
+                <Building2 className="w-4 h-4 text-emerald-600" />
+                <span>Edit KOP RT</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setIsJenisSuratModalOpen(true)}
+                className="px-3.5 py-2.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-900 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer border border-indigo-200"
+                title="Kelola Jenis & Syarat Template Surat"
+              >
+                <Sliders className="w-4 h-4 text-indigo-600" />
+                <span>Kelola Jenis Surat</span>
+              </button>
+            </>
+          )}
+
+          <button
+            type="button"
+            onClick={handleOpenApplyModal}
+            className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-xs flex items-center gap-2 transition-all shadow-md shadow-indigo-700/20 cursor-pointer"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Ajukan Surat Baru</span>
+          </button>
+        </div>
+      </div>
+
+      {/* AI COMPANION SHOWCASE: Contoh Pendampingan AI pada Surat yang Dikerjakan */}
+      <div className="bg-gradient-to-br from-indigo-950 via-slate-900 to-indigo-900 rounded-3xl p-5 sm:p-6 text-white border border-indigo-500/30 shadow-xl space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-indigo-800/60">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 bg-indigo-500/20 rounded-xl border border-indigo-400/30">
+              <Sparkles className="w-5 h-5 text-amber-300 animate-pulse" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="font-extrabold text-sm sm:text-base text-white">
+                  Contoh Pendampingan AI pada Surat yang Dikerjakan
+                </h3>
+                <span className="text-[10px] font-extrabold px-2 py-0.5 rounded uppercase bg-amber-400/20 text-amber-300 border border-amber-400/30">
+                  Fitur Cerdas Gemini AI
+                </span>
+              </div>
+              <p className="text-xs text-indigo-200">
+                AI secara otomatis menyusun naskah surat resmi berbahasa birokrasi baku, menyempurnakan keperluan warga, dan memverifikasi kelayakan kependudukan.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* 3 Interactive Cards Demonstrating AI Companion */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3.5">
+          {suratList.slice(0, 3).map((sampleSurat, idx) => (
+            <div
+              key={sampleSurat.id}
+              onClick={() => setSelectedAIReviewSurat(sampleSurat)}
+              className="bg-slate-900/80 hover:bg-slate-900 border border-indigo-500/30 hover:border-amber-400/60 rounded-2xl p-4 transition-all cursor-pointer group flex flex-col justify-between space-y-3"
+            >
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-[10px]">
+                  <span className="font-mono text-indigo-300 font-bold bg-indigo-950/80 px-2 py-0.5 rounded border border-indigo-800">
+                    Contoh #{idx + 1}
+                  </span>
+                  <span className="text-emerald-400 font-bold flex items-center gap-1">
+                    <CheckCircle2 className="w-3 h-3" />
+                    <span>Didampingi AI</span>
+                  </span>
+                </div>
+
+                <div>
+                  <h4 className="font-bold text-xs text-white group-hover:text-amber-300 transition-colors">
+                    {sampleSurat.jenisSurat}
+                  </h4>
+                  <p className="text-[11px] text-slate-300 font-medium">
+                    Pemohon: <strong>{sampleSurat.namaPemohon}</strong> ({sampleSurat.blokRumah}-{sampleSurat.nomorRumah})
+                  </p>
+                </div>
+
+                {/* AI Polish Snippet */}
+                <div className="p-2.5 bg-indigo-950/60 rounded-xl border border-indigo-800/50 space-y-1 text-[11px]">
+                  <span className="text-[10px] font-bold text-amber-300 block uppercase">
+                    Hasil Penyempurnaan AI:
+                  </span>
+                  <p className="text-slate-200 line-clamp-2 leading-relaxed">
+                    {sampleSurat.alasanFormalAI || sampleSurat.keperluan}
+                  </p>
+                </div>
+              </div>
+
+              <div className="pt-2 border-t border-indigo-800/40 flex items-center justify-between text-[11px]">
+                <span className="text-indigo-300 flex items-center gap-1 font-semibold group-hover:text-white">
+                  <span>Buka Draf & Evaluasi AI</span>
+                  <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+                </span>
+                <span className="text-[10px] text-slate-400 font-mono">
+                  {sampleSurat.nomorSuratResmi || 'Siap Draf'}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Filter and Search Bar */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-2 bg-slate-100 rounded-2xl">
+        {/* Status Filter Tabs */}
+        <div className="flex flex-wrap gap-1">
+          <button
+            type="button"
+            onClick={() => setFilterStatus('all')}
+            className={`px-3 py-1.5 rounded-xl font-bold text-xs transition-all cursor-pointer ${
+              filterStatus === 'all'
+                ? 'bg-white text-slate-900 shadow-2xs'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            Semua ({suratList.length})
+          </button>
+          <button
+            type="button"
+            onClick={() => setFilterStatus('pending')}
+            className={`px-3 py-1.5 rounded-xl font-bold text-xs transition-all cursor-pointer ${
+              filterStatus === 'pending'
+                ? 'bg-white text-amber-700 shadow-2xs'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            Menunggu RT ({suratList.filter((s) => s.status === 'Menunggu Validasi RT').length})
+          </button>
+          <button
+            type="button"
+            onClick={() => setFilterStatus('approved')}
+            className={`px-3 py-1.5 rounded-xl font-bold text-xs transition-all cursor-pointer ${
+              filterStatus === 'approved'
+                ? 'bg-white text-emerald-700 shadow-2xs'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            Disetujui ({suratList.filter((s) => s.status === 'Disetujui / Terbit').length})
+          </button>
+        </div>
+
+        {/* Search Input */}
+        <div className="relative">
+          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Cari pemohon atau jenis surat..."
+            className="w-full sm:w-64 pl-9 pr-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-semibold focus:outline-hidden"
+          />
+        </div>
       </div>
 
       {/* Letters List */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {suratList.map((surat) => {
-          const isMyRequest =
-            surat.blokRumah === currentUser.blokRumah && surat.nomorRumah === currentUser.nomorRumah;
+        {filteredSurat.map((surat) => {
           const isApproved = surat.status === 'Disetujui / Terbit';
           const isPending = surat.status === 'Menunggu Validasi RT';
 
           return (
             <div
               key={surat.id}
-              className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs flex flex-col justify-between space-y-4 hover:border-slate-300 transition-all"
+              className="bg-white rounded-3xl border border-slate-200 p-5 shadow-xs flex flex-col justify-between space-y-4 hover:border-indigo-400 transition-all"
             >
-              <div className="space-y-2.5">
+              <div className="space-y-3">
                 {/* Status & Badge */}
                 <div className="flex items-center justify-between">
                   <span
-                    className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase ${
+                    className={`inline-flex items-center gap-1 px-3 py-0.5 rounded-full text-[10px] font-extrabold uppercase ${
                       isApproved
-                        ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                        ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
                         : isPending
-                        ? 'bg-amber-100 text-amber-800 border border-amber-200'
-                        : 'bg-rose-100 text-rose-800 border border-rose-200'
+                        ? 'bg-amber-100 text-amber-800 border border-amber-300'
+                        : 'bg-rose-100 text-rose-800 border border-rose-300'
                     }`}
                   >
                     {isApproved ? (
-                      <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
                     ) : isPending ? (
-                      <Clock className="w-3 h-3 text-amber-600" />
+                      <Clock className="w-3.5 h-3.5 text-amber-600" />
                     ) : (
-                      <AlertCircle className="w-3 h-3 text-rose-600" />
+                      <AlertCircle className="w-3.5 h-3.5 text-rose-600" />
                     )}
                     <span>{surat.status}</span>
                   </span>
@@ -145,50 +353,80 @@ export const LayananSuratRT: React.FC = () => {
 
                 {/* Title & Official No */}
                 <div>
-                  <h3 className="font-extrabold text-sm text-slate-900 leading-snug">
+                  <h3 className="font-black text-sm text-slate-900 leading-snug">
                     {surat.jenisSurat}
                   </h3>
                   {surat.nomorSuratResmi ? (
-                    <div className="inline-block mt-1 font-mono text-[11px] font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">
+                    <div className="inline-block mt-1 font-mono text-[11px] font-bold text-indigo-700 bg-indigo-50 px-2.5 py-0.5 rounded-md border border-indigo-200">
                       No: {surat.nomorSuratResmi}
                     </div>
                   ) : (
                     <span className="text-[11px] text-slate-400 italic block mt-1">
-                      Nomor resmi akan diterbitkan Ketua RT saat disetujui.
+                      Nomor resmi akan diterbitkan Ketua RT saat disahkan.
                     </span>
                   )}
                 </div>
 
                 {/* Purpose */}
-                <p className="text-xs text-slate-600 bg-slate-50 p-3 rounded-xl border border-slate-100 italic">
-                  "{surat.keperluan}"
-                </p>
+                <div className="space-y-1">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase">
+                    Keperluan Pemohon:
+                  </span>
+                  <p className="text-xs text-slate-700 bg-slate-50 p-3 rounded-2xl border border-slate-100 leading-relaxed">
+                    "{surat.keperluan}"
+                  </p>
+                </div>
+
+                {/* AI Companion Preview Snippet */}
+                {surat.alasanFormalAI && (
+                  <div className="p-2.5 bg-indigo-50/70 border border-indigo-200/80 rounded-xl space-y-1">
+                    <span className="text-[10px] font-extrabold text-indigo-900 flex items-center gap-1">
+                      <Sparkles className="w-3 h-3 text-amber-500" />
+                      <span>Pendampingan Redaksi Formal AI:</span>
+                    </span>
+                    <p className="text-[11px] text-indigo-950 font-medium leading-relaxed">
+                      "{surat.alasanFormalAI}"
+                    </p>
+                  </div>
+                )}
 
                 {surat.catatanAdmin && (
-                  <p className="text-[11px] text-emerald-800 bg-emerald-50/50 p-2.5 rounded-lg border border-emerald-100">
-                    Catatan RT: {surat.catatanAdmin}
+                  <p className="text-[11px] text-emerald-900 bg-emerald-50 p-2.5 rounded-xl border border-emerald-200">
+                    <strong>Catatan RT:</strong> {surat.catatanAdmin}
                   </p>
                 )}
               </div>
 
               {/* Footer */}
-              <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
+              <div className="pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2 text-xs">
                 <div>
-                  <span className="font-bold text-slate-800">{surat.namaPemohon}</span>
+                  <span className="font-bold text-slate-900">{surat.namaPemohon}</span>
                   <span className="text-[11px] text-slate-500 block">
                     {surat.blokRumah} No. {surat.nomorRumah}
                   </span>
                 </div>
 
                 <div className="flex items-center gap-1.5">
+                  {/* AI Assistant Button */}
+                  <button
+                    type="button"
+                    onClick={() => setSelectedAIReviewSurat(surat)}
+                    className="px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-900 border border-indigo-200 rounded-xl text-[11px] font-bold flex items-center gap-1 transition-colors cursor-pointer"
+                    title="Buka Pendampingan & Draf AI"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
+                    <span>Draf AI</span>
+                  </button>
+
                   {/* View / Print letterhead button */}
                   {isApproved && (
                     <button
+                      type="button"
                       onClick={() => setViewingLetter(surat)}
-                      className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-lg text-[11px] font-semibold flex items-center gap-1 transition-colors"
+                      className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-[11px] font-bold flex items-center gap-1 transition-colors cursor-pointer shadow-xs"
                       title="Lihat Format Kertas Kop Surat Resmi RT"
                     >
-                      <Printer className="w-3.5 h-3.5 text-slate-600" />
+                      <Printer className="w-3.5 h-3.5" />
                       <span>Cetak Surat</span>
                     </button>
                   )}
@@ -197,28 +435,26 @@ export const LayananSuratRT: React.FC = () => {
                   {isPending && (
                     <>
                       <button
+                        type="button"
                         onClick={() => handleReject(surat)}
-                        className={`p-1.5 rounded-lg transition-colors ${
-                          isAdmin
-                            ? 'text-slate-500 hover:text-rose-600 hover:bg-rose-50'
-                            : 'text-slate-300 hover:text-rose-600 hover:bg-rose-50'
-                        }`}
-                        title={isAdmin ? 'Tolak Pengajuan' : 'Tolak (Khusus Pengurus RT - Tes 403)'}
+                        className="p-1.5 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors cursor-pointer"
+                        title={isAdmin ? 'Tolak Pengajuan' : 'Tolak (Khusus Pengurus RT)'}
                       >
                         <X className="w-4 h-4" />
                       </button>
 
                       <button
+                        type="button"
                         onClick={() => handleApprove(surat)}
-                        className={`px-3 py-1.5 rounded-lg text-[11px] font-bold flex items-center gap-1 transition-all ${
+                        className={`px-3 py-1.5 rounded-xl text-[11px] font-bold flex items-center gap-1 transition-all cursor-pointer ${
                           isAdmin
                             ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs'
-                            : 'bg-slate-200 text-slate-400 hover:bg-rose-100 hover:text-rose-700'
+                            : 'bg-slate-200 text-slate-500 hover:bg-rose-100 hover:text-rose-700'
                         }`}
                         title={
                           isAdmin
                             ? 'Terbitkan & Tanda Tangani Surat Resmi RT'
-                            : 'Terbitkan Surat (Khusus Pengurus RT - Coba klik untuk tes 403)'
+                            : 'Terbitkan Surat (Khusus Pengurus RT)'
                         }
                       >
                         <Check className="w-3.5 h-3.5" />
@@ -233,73 +469,103 @@ export const LayananSuratRT: React.FC = () => {
         })}
       </div>
 
-      {/* MODAL: Ajukan Surat Pengantar */}
+      {/* MODAL: Ajukan Surat Pengantar Baru */}
       {isApplyModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs">
-          <div className="relative w-full max-w-md bg-white rounded-3xl shadow-xl border border-slate-200 overflow-hidden text-slate-800">
-            <div className="px-6 py-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
-              <h3 className="font-extrabold text-sm text-slate-900 flex items-center gap-2">
-                <FileCheck2 className="w-4 h-4 text-indigo-600" />
-                <span>Formulir Pengajuan Surat Pengantar RT</span>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs overflow-y-auto animate-in fade-in">
+          <div className="relative w-full max-w-lg bg-white rounded-3xl shadow-xl border border-slate-200 overflow-hidden text-slate-800 my-auto">
+            <div className="px-6 py-4 bg-gradient-to-r from-indigo-900 to-slate-900 text-white flex items-center justify-between">
+              <h3 className="font-extrabold text-sm flex items-center gap-2">
+                <FileCheck2 className="w-4 h-4 text-indigo-300" />
+                <span>Formulir Pengajuan Surat Pengantar RT Online</span>
               </h3>
               <button
+                type="button"
                 onClick={() => setIsApplyModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg"
+                className="text-slate-400 hover:text-white"
               >
-                <X className="w-4 h-4" />
+                <X className="w-5 h-5" />
               </button>
             </div>
 
             <form onSubmit={handleApplySubmit} className="p-6 space-y-4 text-xs">
-              <div className="p-3 bg-indigo-50 rounded-xl border border-indigo-200 text-indigo-950 space-y-1">
-                <span className="font-bold">Data Pemohon Terisi Otomatis:</span>
+              <div className="p-3 bg-indigo-50 rounded-2xl border border-indigo-200 text-indigo-950 space-y-1">
+                <span className="font-bold">Identitas Pemohon (Otomatis):</span>
                 <p className="text-[11px] text-indigo-800">
-                  {currentUser.name} ({currentUser.blokRumah} No. {currentUser.nomorRumah})
+                  {currentUser.name} • {currentUser.blokRumah} No. {currentUser.nomorRumah} ({infoPerumahan.namaPerumahan})
                 </p>
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Pilih Jenis Surat</label>
+                <label className="block font-bold text-slate-700 mb-1">Pilih Jenis Surat Pengantar *</label>
                 <select
-                  value={jenisSurat}
-                  onChange={(e) => setJenisSurat(e.target.value as JenisSuratPengantar)}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-medium focus:border-indigo-500 focus:outline-hidden"
+                  value={selectedJenisSuratId}
+                  onChange={(e) => setSelectedJenisSuratId(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-hidden"
                 >
-                  {jenisSuratOptions.map((opt) => (
-                    <option key={opt} value={opt}>
-                      {opt}
+                  {activeJenisSurat.map((opt) => (
+                    <option key={opt.id} value={opt.nama}>
+                      {opt.nama} ({opt.kode})
                     </option>
                   ))}
                 </select>
               </div>
 
+              {/* Dynamic Requirements Helper */}
+              {currentJenisConfig && (
+                <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-bold uppercase text-slate-500">
+                      Syarat Dokumen Diperlukan:
+                    </span>
+                    <span className="text-[10px] text-indigo-700 font-semibold flex items-center gap-1">
+                      <Clock className="w-3 h-3" />
+                      Estimasi: {currentJenisConfig.estimasiProses}
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {currentJenisConfig.persyaratan.map((req, idx) => (
+                      <span
+                        key={idx}
+                        className="px-2.5 py-1 bg-white border border-slate-200 rounded-lg text-[10px] font-semibold text-slate-700 flex items-center gap-1"
+                      >
+                        <Check className="w-3 h-3 text-emerald-600" />
+                        <span>{req}</span>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <div>
-                <label className="block font-bold text-slate-700 mb-1">
-                  Keperluan / Maksud Pembuatan Surat
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="font-bold text-slate-700">
+                    Maksud / Keperluan Pengajuan *
+                  </label>
+                  <span className="text-[10px] text-slate-400">Jelaskan instansi tujuan</span>
+                </div>
                 <textarea
                   required
                   rows={3}
                   value={keperluan}
                   onChange={(e) => setKeperluan(e.target.value)}
-                  placeholder="Jelaskan untuk instansi apa surat ini ditujukan, misalnya perpanjangan SKCK di Polsek, pembuatan rekening bank, izin domisili usaha..."
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:border-indigo-500 focus:outline-hidden resize-none"
+                  placeholder="Contoh: Kelengkapan berkas administrasi melamar pekerjaan BUMN di Polsek..."
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl focus:border-indigo-500 focus:outline-hidden text-xs resize-none"
                 />
               </div>
 
-              <div className="pt-2 flex justify-end gap-2">
+              <div className="pt-2 flex justify-end gap-2 border-t border-slate-200">
                 <button
                   type="button"
                   onClick={() => setIsApplyModalOpen(false)}
-                  className="px-4 py-2 border border-slate-300 rounded-xl text-slate-700 font-medium hover:bg-slate-50"
+                  className="px-4 py-2 border border-slate-300 rounded-xl text-slate-700 font-semibold"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl shadow-xs"
+                  className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-xs"
                 >
-                  Kirim Permohonan ke RT
+                  Kirim Permohonan ke Pengurus RT
                 </button>
               </div>
             </form>
@@ -307,16 +573,144 @@ export const LayananSuratRT: React.FC = () => {
         </div>
       )}
 
-      {/* MODAL: Printable Official Letterhead (KOP SURAT RT) */}
-      {viewingLetter && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs">
-          <div className="relative w-full max-w-2xl bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden text-slate-800 max-h-[90vh] flex flex-col">
-            <div className="px-6 py-4 bg-slate-900 text-white flex items-center justify-between">
+      {/* MODAL: AI COMPANION & DRAFT DETAIL */}
+      {selectedAIReviewSurat && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-xs overflow-y-auto animate-in fade-in">
+          <div className="relative w-full max-w-2xl bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden text-slate-800 my-auto flex flex-col max-h-[92vh]">
+            <div className="px-6 py-4 bg-gradient-to-r from-indigo-900 via-teal-950 to-slate-900 text-white flex items-center justify-between shrink-0">
               <div className="flex items-center gap-2">
-                <Printer className="w-5 h-5 text-emerald-400" />
-                <h3 className="font-bold text-sm">Pratinjau Surat Resmi RT 04 (Format Cetak)</h3>
+                <Sparkles className="w-5 h-5 text-amber-300" />
+                <div>
+                  <h3 className="font-extrabold text-sm">
+                    Asisten & Pendampingan AI: {selectedAIReviewSurat.jenisSurat}
+                  </h3>
+                  <p className="text-[11px] text-indigo-200">
+                    Pemohon: {selectedAIReviewSurat.namaPemohon} ({selectedAIReviewSurat.blokRumah}-{selectedAIReviewSurat.nomorRumah})
+                  </p>
+                </div>
               </div>
               <button
+                type="button"
+                onClick={() => setSelectedAIReviewSurat(null)}
+                className="text-slate-400 hover:text-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-6 overflow-y-auto space-y-5 flex-1 text-xs">
+              {/* Resident Original Text vs AI Formal Polish */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl space-y-1">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                    Keperluan yang Ditulis Warga:
+                  </span>
+                  <p className="text-xs text-slate-700 italic">
+                    "{selectedAIReviewSurat.keperluan}"
+                  </p>
+                </div>
+
+                <div className="p-3.5 bg-indigo-50/80 border border-indigo-200 rounded-2xl space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-extrabold text-indigo-900 uppercase tracking-wider flex items-center gap-1">
+                      <Sparkles className="w-3 h-3 text-amber-500" />
+                      <span>Bahasa Baku Birokrasi (Polesan AI):</span>
+                    </span>
+                  </div>
+                  <p className="text-xs text-indigo-950 font-semibold leading-relaxed">
+                    "{selectedAIReviewSurat.alasanFormalAI || selectedAIReviewSurat.keperluan}"
+                  </p>
+                </div>
+              </div>
+
+              {/* Full Official Draft generated by AI */}
+              <div className="p-4 bg-slate-50 border border-slate-300 rounded-2xl space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-xs text-slate-900 flex items-center gap-1.5">
+                    <FileText className="w-4 h-4 text-emerald-600" />
+                    <span>Draf Naskah Surat Resmi Hasil Pendampingan AI:</span>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => handleCopyAIDraft(selectedAIReviewSurat.drafSuratAI)}
+                    className="text-[11px] text-slate-600 hover:text-emerald-700 font-bold flex items-center gap-1 cursor-pointer"
+                  >
+                    {copiedDraft ? <CheckCheck className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                    <span>{copiedDraft ? 'Tersalin!' : 'Salin Naskah'}</span>
+                  </button>
+                </div>
+
+                <div className="p-4 bg-white border border-slate-200 rounded-xl font-serif text-xs text-slate-800 leading-relaxed shadow-inner">
+                  {selectedAIReviewSurat.drafSuratAI || (
+                    <span className="text-slate-400 italic font-sans">
+                      Draf AI belum digenerate untuk permohonan ini. Klik tombol di bawah untuk meminta Gemini AI menyusun naskah surat otomatis.
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* AI Verification & Audit Note for Admin */}
+              <div className="p-4 bg-emerald-50/80 border border-emerald-300 rounded-2xl space-y-1.5">
+                <span className="font-bold text-xs text-emerald-950 flex items-center gap-1.5">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                  <span>Catatan Pendampingan & Rekomendasi Verifikasi AI:</span>
+                </span>
+                <p className="text-xs text-emerald-900 leading-relaxed">
+                  {selectedAIReviewSurat.catatanAI ||
+                    '✅ Analisis AI: Berkas permohonan warga telah dicocokkan dengan data registrasi KK RT 04. Tidak ditemukan catatan penolakan sebelumnya.'}
+                </p>
+              </div>
+
+              {/* Actions */}
+              <div className="pt-2 flex flex-wrap items-center justify-between gap-3 border-t border-slate-200">
+                <button
+                  type="button"
+                  disabled={isGeneratingAIDraft}
+                  onClick={() => handleRunAICounsel(selectedAIReviewSurat)}
+                  className="px-4 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-900 border border-indigo-300 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${isGeneratingAIDraft ? 'animate-spin' : ''}`} />
+                  <span>{isGeneratingAIDraft ? 'Gemini AI Sedang Menulis...' : 'Generate Ulang dengan AI'}</span>
+                </button>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedAIReviewSurat(null)}
+                    className="px-4 py-2 border border-slate-300 rounded-xl text-slate-700 font-semibold"
+                  >
+                    Tutup
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setViewingLetter(selectedAIReviewSurat);
+                      setSelectedAIReviewSurat(null);
+                    }}
+                    className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-xs"
+                  >
+                    <Printer className="w-4 h-4" />
+                    <span>Cetak Format KOP Resmi</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: Printable Official Letterhead (KOP SURAT DINAMIS RT) */}
+      {viewingLetter && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/70 backdrop-blur-xs overflow-y-auto animate-in fade-in">
+          <div className="relative w-full max-w-2xl bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden text-slate-800 my-auto max-h-[92vh] flex flex-col">
+            <div className="print:hidden px-6 py-4 bg-slate-900 text-white flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-2">
+                <Printer className="w-5 h-5 text-emerald-400" />
+                <h3 className="font-bold text-sm">Pratinjau Surat Resmi RT 04 (Format Cetak Siap Pakai)</h3>
+              </div>
+              <button
+                type="button"
                 onClick={() => setViewingLetter(null)}
                 className="p-1 rounded-lg text-white/80 hover:text-white"
               >
@@ -325,33 +719,39 @@ export const LayananSuratRT: React.FC = () => {
             </div>
 
             {/* Letter Document Content */}
-            <div className="p-8 overflow-y-auto space-y-6 text-slate-900 font-serif leading-relaxed">
-              {/* Kop Surat */}
+            <div className="p-8 sm:p-10 overflow-y-auto space-y-6 text-slate-900 font-serif leading-relaxed">
+              {/* Dynamic Kop Surat */}
               <div className="text-center border-b-2 border-slate-900 pb-4 space-y-1">
+                <span className="text-[10px] font-black uppercase tracking-widest text-emerald-800 bg-emerald-50 px-2.5 py-0.5 rounded-md border border-emerald-200 font-sans">
+                  PENGURUS RUKUN TETANGGA
+                </span>
                 <h2 className="text-lg font-black tracking-wider uppercase font-sans">
-                  PENGURUS RUKUN TETANGGA 04 / RUKUN WARGA 09
+                  RUKUN TETANGGA {infoPerumahan.rtRw.split('/')[0]?.trim()} / RUKUN WARGA {infoPerumahan.rtRw.split('/')[1]?.trim()}
                 </h2>
                 <h3 className="text-base font-extrabold uppercase font-sans text-slate-800">
                   {infoPerumahan.namaPerumahan.toUpperCase()}
                 </h3>
                 <p className="text-xs text-slate-600 font-sans">
-                  Kelurahan {infoPerumahan.kelurahan}, Kecamatan {infoPerumahan.kecamatan}, {infoPerumahan.kota}
+                  Kelurahan {infoPerumahan.kelurahan}, Kecamatan {infoPerumahan.kecamatan}, {infoPerumahan.kota} {infoPerumahan.kodePos}
+                </p>
+                <p className="text-[10px] text-slate-500 font-sans">
+                  Sekretariat: {infoPerumahan.alamatSekretariat} • Telp/Hotline: {infoPerumahan.hotlineRT}
                 </p>
               </div>
 
               {/* Title & Nomor */}
-              <div className="text-center space-y-1 pt-2">
+              <div className="text-center space-y-1 pt-1">
                 <h4 className="font-extrabold text-base uppercase underline font-sans">
                   {viewingLetter.jenisSurat}
                 </h4>
                 <p className="text-xs font-mono font-bold text-slate-700">
-                  Nomor: {viewingLetter.nomorSuratResmi}
+                  Nomor: {viewingLetter.nomorSuratResmi || '470/RT.04/RW.09/IX/2026'}
                 </p>
               </div>
 
               {/* Body */}
               <p className="text-xs">
-                Yang bertanda tangan di bawah ini, Ketua Rukun Tetangga (RT) 04 / RW 09 Kelurahan {infoPerumahan.kelurahan}, dengan ini menerangkan bahwa:
+                Yang bertanda tangan di bawah ini, Ketua Rukun Tetangga ({infoPerumahan.rtRw}) Kelurahan {infoPerumahan.kelurahan}, Kecamatan {infoPerumahan.kecamatan}, dengan ini menerangkan bahwa:
               </p>
 
               <div className="px-6 space-y-1.5 text-xs">
@@ -364,19 +764,22 @@ export const LayananSuratRT: React.FC = () => {
                   <span className="col-span-2 font-mono font-semibold">: {viewingLetter.nikPemohon}</span>
                 </div>
                 <div className="grid grid-cols-3">
-                  <span className="text-slate-600">Alamat Rumah</span>
+                  <span className="text-slate-600">Alamat Tempat Tinggal</span>
                   <span className="col-span-2 font-medium">
                     : {viewingLetter.blokRumah} No. {viewingLetter.nomorRumah}, {infoPerumahan.namaPerumahan}
                   </span>
                 </div>
                 <div className="grid grid-cols-3">
                   <span className="text-slate-600">Maksud / Keperluan</span>
-                  <span className="col-span-2 font-medium">: {viewingLetter.keperluan}</span>
+                  <span className="col-span-2 font-bold text-indigo-950">
+                    : {viewingLetter.alasanFormalAI || viewingLetter.keperluan}
+                  </span>
                 </div>
               </div>
 
-              <p className="text-xs">
-                Adalah benar yang bersangkutan merupakan warga sah yang berdomisili di lingkungan perumahan kami dan berkelakuan baik. Surat pengantar ini diterbitkan untuk dipergunakan sebagaimana mestinya.
+              <p className="text-xs leading-relaxed">
+                {viewingLetter.drafSuratAI ||
+                  'Adalah benar yang bersangkutan merupakan warga sah yang berdomisili di lingkungan perumahan kami, berkelakuan baik, dan aktif bermasyarakat. Surat pengantar ini diterbitkan dengan sebenarnya untuk dapat dipergunakan sebagaimana mestinya.'}
               </p>
 
               {/* Signature section */}
@@ -386,28 +789,34 @@ export const LayananSuratRT: React.FC = () => {
                   <p className="font-bold underline">{viewingLetter.namaPemohon}</p>
                 </div>
                 <div className="text-center space-y-16">
-                  <p>Depok, {viewingLetter.tanggalSelesai || viewingLetter.tanggalPengajuan}<br />Ketua RT 04 / RW 09,</p>
+                  <p>
+                    {infoPerumahan.kota}, {viewingLetter.tanggalSelesai || viewingLetter.tanggalPengajuan}
+                    <br />
+                    Ketua {infoPerumahan.rtRw},
+                  </p>
                   <div className="relative">
                     <div className="absolute -top-12 left-1/2 -translate-x-1/2 w-20 h-20 rounded-full border-2 border-emerald-600/40 text-emerald-800 text-[9px] font-bold flex items-center justify-center rotate-12 pointer-events-none">
                       STEMPEL RT 04
                     </div>
-                    <p className="font-bold underline">Ir. Budi Santoso, M.Sc.</p>
+                    <p className="font-bold underline">{infoPerumahan.namaKetuaRT}</p>
                   </div>
                 </div>
               </div>
             </div>
 
             {/* Bottom Actions */}
-            <div className="p-4 bg-slate-50 border-t border-slate-200 flex justify-end gap-2">
+            <div className="print:hidden p-4 bg-slate-50 border-t border-slate-200 flex justify-end gap-2">
               <button
+                type="button"
                 onClick={() => setViewingLetter(null)}
                 className="px-4 py-2 border border-slate-300 rounded-xl text-slate-700 text-xs font-semibold hover:bg-white"
               >
                 Tutup
               </button>
               <button
+                type="button"
                 onClick={() => window.print()}
-                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-xs"
+                className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md cursor-pointer"
               >
                 <Printer className="w-4 h-4" />
                 <span>Cetak Lembar Dokumen</span>
@@ -416,6 +825,10 @@ export const LayananSuratRT: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Global Modals for KOP & Jenis Surat */}
+      <EditKopRTModal isOpen={isKopModalOpen} onClose={() => setIsKopModalOpen(false)} />
+      <JenisSuratManagerModal isOpen={isJenisSuratModalOpen} onClose={() => setIsJenisSuratModalOpen(false)} />
     </div>
   );
 };

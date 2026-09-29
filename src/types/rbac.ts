@@ -17,7 +17,8 @@ export type JenisSuratPengantar =
   | 'Surat Pengantar SKCK'
   | 'Surat Pengantar Pembuatan KTP/KK'
   | 'Surat Keterangan Usaha (SKU)'
-  | 'Surat Izin Acara / Keramaian';
+  | 'Surat Izin Acara / Keramaian'
+  | string;
 
 export type StatusSurat = 'Menunggu Validasi RT' | 'Disetujui / Terbit' | 'Ditolak';
 
@@ -43,6 +44,9 @@ export type PermissionKey =
   | 'surat:request'
   | 'surat:approve'
   | 'surat:view_all'
+  | 'surat:manage_types'
+  | 'kop:manage'
+  | 'keamanan:manage'
   | 'laporan:create'
   | 'laporan:manage'
   | 'pengumuman:create'
@@ -53,29 +57,31 @@ export interface PermissionDefinition {
   key: PermissionKey;
   name: string;
   description: string;
-  module: 'warga' | 'iuran' | 'surat' | 'lingkungan' | 'keamanan';
+  module: 'Data Warga' | 'Iuran & Kas' | 'Layanan Surat' | 'Keamanan & Pos Satpam' | 'Pengumuman' | 'Audit & Sistem';
 }
 
-export type RolePermissions = Record<Role, PermissionKey[]>;
+export interface RolePermissions {
+  admin: PermissionKey[];
+  user: PermissionKey[];
+}
 
 export interface User {
   id: string;
   name: string;
   email: string;
   role: Role;
-  roleTitle: string; // e.g. "Ketua RT 04 / Admin Perumahan", "Warga Blok B-05"
+  roleTitle: string;
   status: UserStatus;
   blokRumah: BlokRumah;
   nomorRumah: string;
   avatar: string;
-  phone: string;
+  phone?: string;
   createdAt: string;
-  lastLogin: string;
+  lastLogin?: string;
 }
 
 export interface WargaItem {
   id: string;
-  userId?: string;
   namaLengkap: string;
   nik: string;
   noKK: string;
@@ -107,6 +113,18 @@ export interface IuranItem {
   buktiBayar?: string;
 }
 
+export interface JenisSuratConfig {
+  id: string;
+  nama: string;
+  kode: string;
+  deskripsi: string;
+  persyaratan: string[];
+  templatePembuka: string;
+  templatePenutup: string;
+  estimasiProses: string;
+  aktif: boolean;
+}
+
 export interface SuratItem {
   id: string;
   wargaId: string;
@@ -114,13 +132,31 @@ export interface SuratItem {
   nikPemohon: string;
   blokRumah: BlokRumah;
   nomorRumah: string;
-  jenisSurat: JenisSuratPengantar;
+  jenisSurat: string;
   keperluan: string;
   status: StatusSurat;
   nomorSuratResmi?: string;
   catatanAdmin?: string;
   tanggalPengajuan: string;
   tanggalSelesai?: string;
+  // AI Companion fields
+  drafSuratAI?: string;
+  alasanFormalAI?: string;
+  catatanAI?: string;
+}
+
+export interface PetugasKeamanan {
+  id: string;
+  namaLengkap: string;
+  jabatan: 'Komandan Regu (Danru)' | 'Petugas Pos Gerbang Utama' | 'Petugas Patroli Keliling' | 'Petugas Pos Pantau Barat';
+  noHp: string;
+  noWhatsapp: string;
+  posJaga: string;
+  shift: 'Shift Pagi (07.00 - 15.00)' | 'Shift Sore (15.00 - 23.00)' | 'Shift Malam (23.00 - 07.00)';
+  statusJaga: 'Sedang Bertugas' | 'Siaga (On-Call)' | 'Libur';
+  foto: string;
+  masaTugas: string;
+  catatanTugas: string;
 }
 
 export interface LaporanLingkungan {
@@ -139,7 +175,7 @@ export interface LaporanLingkungan {
 export interface PengumumanPerumahan {
   id: string;
   judul: string;
-  kategori: 'Kerja Bakti' | 'Rapat RT' | 'Jadwal Ronda' | 'Informasi Kas' | 'Darurat';
+  kategori: 'Kerja Bakti' | 'Rapat RT' | 'Pengamanan Lingkungan' | 'Informasi Kas' | 'Darurat';
   isi: string;
   penulis: string;
   prioritas: 'biasa' | 'penting' | 'darurat';
@@ -168,6 +204,12 @@ export interface InfoPerumahan {
   kelurahan: string;
   kecamatan: string;
   kota: string;
+  kodePos: string;
+  nomorSK: string;
+  alamatSekretariat: string;
+  hotlineRT: string;
+  namaKetuaRT: string;
+  slogan: string;
   totalRumah: number;
   saldoKasRt: number;
 }
