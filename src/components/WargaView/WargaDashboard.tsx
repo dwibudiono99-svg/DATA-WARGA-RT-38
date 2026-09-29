@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { KopDanLogoRT } from '../KopDanLogoRT';
 import { WebHostingBanner } from '../WebHostingBanner';
+import { IuranStatistikChart } from '../IuranStatistikChart';
 
 interface WargaDashboardProps {
   onNavigateTab: (tab: string) => void;
@@ -247,6 +248,12 @@ export const WargaDashboard: React.FC<WargaDashboardProps> = ({
           </button>
         </div>
       </div>
+
+      {/* Statistik & Transparansi Iuran Warga (Recharts) */}
+      <IuranStatistikChart
+        variant="warga"
+        onNavigateIuran={() => onNavigateTab('bayar-iuran')}
+      />
 
       {/* Petugas Keamanan & Pos Satpam Lingkungan */}
       <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-xs space-y-4">

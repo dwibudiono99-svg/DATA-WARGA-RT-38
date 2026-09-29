@@ -21,11 +21,14 @@ import {
   Sliders,
   Phone,
   MessageCircle,
+  FileSpreadsheet,
+  Database,
 } from 'lucide-react';
 import { KopDanLogoRT } from '../KopDanLogoRT';
 import { WebHostingBanner } from '../WebHostingBanner';
 import { EditKopRTModal } from '../EditKopRTModal';
 import { JenisSuratManagerModal } from '../JenisSuratManagerModal';
+import { IuranStatistikChart } from '../IuranStatistikChart';
 
 interface RTDashboardProps {
   onNavigateTab: (tab: string) => void;
@@ -130,6 +133,16 @@ export const RTDashboard: React.FC<RTDashboardProps> = ({
             <span className="ml-1 px-1.5 py-0.2 bg-emerald-500 text-slate-950 font-black text-[10px] rounded-full">
               {satpamBertugas.length} Siaga
             </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => onNavigateTab('pelaporan')}
+            className="px-3.5 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer shadow-md shadow-indigo-600/20"
+            title="Pusat Pelaporan, Rekap Ekspor & Backup"
+          >
+            <FileSpreadsheet className="w-4 h-4 text-blue-200" />
+            <span>Pelaporan & Backup</span>
           </button>
         </div>
       </div>
@@ -334,6 +347,12 @@ export const RTDashboard: React.FC<RTDashboardProps> = ({
           </div>
         </div>
       </div>
+
+      {/* 5. Statistik Iuran Warga (Recharts) */}
+      <IuranStatistikChart
+        variant="admin"
+        onNavigateIuran={() => onNavigateTab('iuran')}
+      />
 
       {/* Distribution by Blocks (Blok A, B, C, D) */}
       <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-4">

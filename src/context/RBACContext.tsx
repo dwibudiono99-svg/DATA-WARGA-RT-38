@@ -102,11 +102,19 @@ interface RBACContextType {
 
   // Permissions & Dynamic Matrix
   toggleRolePermission: (role: Role, permission: PermissionKey) => void;
+  saveRolePermissions: (newPermissions: RolePermissions) => boolean;
   resetPermissionsToDefault: () => void;
+
+  // Real-time synchronization & Backup
+  isRealtimeActive: boolean;
+  lastSyncTimestamp: string;
+  exportFullBackupJSON: () => void;
+  importFullBackupJSON: (backupObj: any, mode: 'replace' | 'merge') => boolean;
 
   // Audit & Reset
   logAudit: (action: string, moduleName: string, status: 'success' | 'denied', details: string) => void;
   resetAllToDefault: () => void;
+  resetToZero: () => boolean;
 }
 
 const RBACContext = createContext<RBACContextType | undefined>(undefined);
@@ -236,6 +244,82 @@ export const RBACProvider: React.FC<{ children: React.ReactNode }> = ({ children
   });
 
   const [accessDeniedInfo, setAccessDeniedInfo] = useState<AccessDeniedInfo | null>(null);
+  const [isRealtimeActive] = useState<boolean>(true);
+  const [lastSyncTimestamp, setLastSyncTimestamp] = useState<string>(() => new Date().toLocaleTimeString('id-ID'));
+
+  const broadcastChannelRef = React.useRef<BroadcastChannel | null>(null);
+
+  // Helper to notify other tabs/windows in real time
+  const notifyRealtimeSync = (data?: any) => {
+    setLastSyncTimestamp(new Date().toLocaleTimeString('id-ID'));
+    if (broadcastChannelRef.current) {
+      try {
+        broadcastChannelRef.current.postMessage({
+          type: 'SIM_WARGA_SYNC_EVENT',
+          timestamp: new Date().toISOString(),
+          payload: data,
+        });
+      } catch (e) {
+        console.warn('Broadcast sync error:', e);
+      }
+    }
+  };
+
+  // BroadcastChannel & window storage event listener for real-time changes
+  useEffect(() => {
+    if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+      const channel = new BroadcastChannel('sim_warga_realtime_channel');
+      broadcastChannelRef.current = channel;
+
+      channel.onmessage = (event) => {
+        if (event.data?.type === 'SIM_WARGA_SYNC_EVENT') {
+          const payload = event.data.payload;
+          if (payload) {
+            if (payload.wargaList !== undefined) setWargaList(payload.wargaList);
+            if (payload.iuranList !== undefined) setIuranList(payload.iuranList);
+            if (payload.suratList !== undefined) setSuratList(payload.suratList);
+            if (payload.jenisSuratList !== undefined) setJenisSuratList(payload.jenisSuratList);
+            if (payload.petugasKeamananList !== undefined) setPetugasKeamananList(payload.petugasKeamananList);
+            if (payload.laporanList !== undefined) setLaporanList(payload.laporanList);
+            if (payload.pengumumanList !== undefined) setPengumumanList(payload.pengumumanList);
+            if (payload.rolePermissions !== undefined) setRolePermissions(payload.rolePermissions);
+            if (payload.infoPerumahan !== undefined) setInfoPerumahan(payload.infoPerumahan);
+            if (payload.auditLogs !== undefined) setAuditLogs(payload.auditLogs);
+            setLastSyncTimestamp(new Date().toLocaleTimeString('id-ID'));
+          }
+        }
+      };
+
+      return () => {
+        channel.close();
+      };
+    }
+  }, []);
+
+  // Storage event listener fallback
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (!e.key || !e.newValue) return;
+      try {
+        if (e.key === STORAGE_KEYS.WARGA) setWargaList(JSON.parse(e.newValue));
+        else if (e.key === STORAGE_KEYS.IURAN) setIuranList(JSON.parse(e.newValue));
+        else if (e.key === STORAGE_KEYS.SURAT) setSuratList(JSON.parse(e.newValue));
+        else if (e.key === STORAGE_KEYS.JENIS_SURAT) setJenisSuratList(JSON.parse(e.newValue));
+        else if (e.key === STORAGE_KEYS.PETUGAS_KEAMANAN) setPetugasKeamananList(JSON.parse(e.newValue));
+        else if (e.key === STORAGE_KEYS.LAPORAN) setLaporanList(JSON.parse(e.newValue));
+        else if (e.key === STORAGE_KEYS.PENGUMUMAN) setPengumumanList(JSON.parse(e.newValue));
+        else if (e.key === STORAGE_KEYS.PERMISSIONS) setRolePermissions(JSON.parse(e.newValue));
+        else if (e.key === STORAGE_KEYS.INFO) setInfoPerumahan(JSON.parse(e.newValue));
+        else if (e.key === STORAGE_KEYS.AUDIT_LOGS) setAuditLogs(JSON.parse(e.newValue));
+        setLastSyncTimestamp(new Date().toLocaleTimeString('id-ID'));
+      } catch (err) {
+        console.warn('Storage sync error:', err);
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
 
   // Sync state to local storage
   useEffect(() => {
@@ -784,6 +868,163 @@ export const RBACProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!canExecute('roles:manage_permissions', 'Mereset Hak Akses ke Bawaan', 'Pengaturan Keamanan')) return;
     setRolePermissions(DEFAULT_ROLE_PERMISSIONS);
     logAudit('PERMISSION_RESET', 'Pengaturan Keamanan', 'success', 'Mereset konfigurasi izin RBAC ke standar perumahan.');
+    notifyRealtimeSync({ rolePermissions: DEFAULT_ROLE_PERMISSIONS });
+  };
+
+  const saveRolePermissions = (newPermissions: RolePermissions): boolean => {
+    if (!canExecute('roles:manage_permissions', 'Menyimpan Matriks Hak Akses RBAC', 'Pengaturan Keamanan')) return false;
+
+    setRolePermissions(newPermissions);
+    localStorage.setItem(STORAGE_KEYS.PERMISSIONS, JSON.stringify(newPermissions));
+    logAudit('ROLE_PERMISSIONS_SAVE', 'Pengaturan Keamanan', 'success', 'Menyimpan konfigurasi kustomisasi matriks hak akses RBAC.');
+    notifyRealtimeSync({ rolePermissions: newPermissions });
+    return true;
+  };
+
+  const exportFullBackupJSON = () => {
+    const backupData = {
+      appName: 'SIM-Warga Portal Terpadu RT 04',
+      systemVersion: '2.5',
+      exportTimestamp: new Date().toISOString(),
+      exportedBy: {
+        userId: currentUser.id,
+        name: currentUser.name,
+        role: currentUser.role,
+        roleTitle: currentUser.roleTitle,
+      },
+      infoPerumahan,
+      wargaList,
+      iuranList,
+      suratList,
+      jenisSuratList,
+      petugasKeamananList,
+      laporanList,
+      pengumumanList,
+      rolePermissions,
+      auditLogs,
+    };
+
+    const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(backupData, null, 2));
+    const downloadAnchor = document.createElement('a');
+    const safeRT = infoPerumahan.rtRw.replace(/[^a-zA-Z0-9]/g, '_');
+    const dateStr = new Date().toISOString().split('T')[0];
+    downloadAnchor.setAttribute('href', dataStr);
+    downloadAnchor.setAttribute('download', `backup_sim_warga_${safeRT}_${dateStr}.json`);
+    document.body.appendChild(downloadAnchor);
+    downloadAnchor.click();
+    downloadAnchor.remove();
+
+    logAudit('SYSTEM_BACKUP_EXPORT', 'Audit & Sistem', 'success', 'Mengunduh cadangan lengkap (backup full snapshot JSON).');
+  };
+
+  const importFullBackupJSON = (backupObj: any, mode: 'replace' | 'merge'): boolean => {
+    if (!canExecute('backup:manage', 'Memulihkan Data Cadangan Sistem (Restore)', 'Audit & Sistem')) return false;
+
+    if (!backupObj || typeof backupObj !== 'object') {
+      alert('Format berkas cadangan (JSON) tidak valid!');
+      return false;
+    }
+
+    try {
+      if (mode === 'replace') {
+        if (Array.isArray(backupObj.wargaList)) setWargaList(backupObj.wargaList);
+        if (Array.isArray(backupObj.iuranList)) setIuranList(backupObj.iuranList);
+        if (Array.isArray(backupObj.suratList)) setSuratList(backupObj.suratList);
+        if (Array.isArray(backupObj.jenisSuratList)) setJenisSuratList(backupObj.jenisSuratList);
+        if (Array.isArray(backupObj.petugasKeamananList)) setPetugasKeamananList(backupObj.petugasKeamananList);
+        if (Array.isArray(backupObj.laporanList)) setLaporanList(backupObj.laporanList);
+        if (Array.isArray(backupObj.pengumumanList)) setPengumumanList(backupObj.pengumumanList);
+        if (backupObj.infoPerumahan) setInfoPerumahan(backupObj.infoPerumahan);
+        if (backupObj.rolePermissions) setRolePermissions(backupObj.rolePermissions);
+      } else {
+        if (Array.isArray(backupObj.wargaList)) {
+          setWargaList((prev) => {
+            const existingIds = new Set(prev.map((w) => w.id));
+            const newOnes = backupObj.wargaList.filter((w: WargaItem) => !existingIds.has(w.id));
+            return [...prev, ...newOnes];
+          });
+        }
+        if (Array.isArray(backupObj.iuranList)) {
+          setIuranList((prev) => {
+            const existingIds = new Set(prev.map((i) => i.id));
+            const newOnes = backupObj.iuranList.filter((i: IuranItem) => !existingIds.has(i.id));
+            return [...prev, ...newOnes];
+          });
+        }
+        if (Array.isArray(backupObj.suratList)) {
+          setSuratList((prev) => {
+            const existingIds = new Set(prev.map((s) => s.id));
+            const newOnes = backupObj.suratList.filter((s: SuratItem) => !existingIds.has(s.id));
+            return [...prev, ...newOnes];
+          });
+        }
+      }
+
+      logAudit(
+        'SYSTEM_BACKUP_IMPORT',
+        'Audit & Sistem',
+        'success',
+        `Memulihkan data cadangan dengan mode: ${mode === 'replace' ? 'Gantikan Total' : 'Gabungkan Data'}.`
+      );
+
+      notifyRealtimeSync(backupObj);
+      return true;
+    } catch (e: any) {
+      alert('Gagal memulihkan cadangan: ' + (e?.message || e));
+      return false;
+    }
+  };
+
+  const resetToZero = (): boolean => {
+    if (!canExecute('backup:manage', 'Mereset Database Total ke Nol / Kosong', 'Audit & Sistem')) return false;
+
+    setWargaList([]);
+    setIuranList([]);
+    setSuratList([]);
+    setLaporanList([]);
+    setPengumumanList([]);
+    setInfoPerumahan((prev) => ({
+      ...prev,
+      saldoKasRt: 0,
+      totalRumah: 0,
+    }));
+
+    const cleanLog: AuditLogPerumahan = {
+      id: `log_reset_zero_${Date.now()}`,
+      timestamp: new Date().toISOString(),
+      userId: currentUser.id,
+      userName: currentUser.name,
+      userRole: currentUser.role,
+      action: 'SYSTEM_RESET_ZERO',
+      module: 'Audit & Sistem',
+      status: 'success',
+      details: `Database perumahan dikosongkan total ke status Nol oleh ${currentUser.name}. Seluruh data kependudukan dan transaksi kas dihapus.`,
+      ipAddress: '127.0.0.1 (Localhost)',
+    };
+    setAuditLogs([cleanLog]);
+
+    localStorage.setItem(STORAGE_KEYS.WARGA, JSON.stringify([]));
+    localStorage.setItem(STORAGE_KEYS.IURAN, JSON.stringify([]));
+    localStorage.setItem(STORAGE_KEYS.SURAT, JSON.stringify([]));
+    localStorage.setItem(STORAGE_KEYS.LAPORAN, JSON.stringify([]));
+    localStorage.setItem(STORAGE_KEYS.PENGUMUMAN, JSON.stringify([]));
+    localStorage.setItem(STORAGE_KEYS.AUDIT_LOGS, JSON.stringify([cleanLog]));
+
+    notifyRealtimeSync({
+      wargaList: [],
+      iuranList: [],
+      suratList: [],
+      laporanList: [],
+      pengumumanList: [],
+      auditLogs: [cleanLog],
+      infoPerumahan: {
+        ...infoPerumahan,
+        saldoKasRt: 0,
+        totalRumah: 0,
+      },
+    });
+
+    return true;
   };
 
   const resetAllToDefault = () => {
@@ -801,6 +1042,20 @@ export const RBACProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setRolePermissions(DEFAULT_ROLE_PERMISSIONS);
     setAuditLogs(INITIAL_AUDIT_LOGS);
     setAccessDeniedInfo(null);
+
+    notifyRealtimeSync({
+      users: INITIAL_USERS,
+      infoPerumahan: INITIAL_INFO_PERUMAHAN,
+      wargaList: INITIAL_WARGA,
+      iuranList: INITIAL_IURAN,
+      suratList: INITIAL_SURAT,
+      jenisSuratList: INITIAL_JENIS_SURAT,
+      petugasKeamananList: INITIAL_PETUGAS_KEAMANAN,
+      laporanList: INITIAL_LAPORAN,
+      pengumumanList: INITIAL_PENGUMUMAN,
+      rolePermissions: DEFAULT_ROLE_PERMISSIONS,
+      auditLogs: INITIAL_AUDIT_LOGS,
+    });
   };
 
   return (
@@ -848,9 +1103,15 @@ export const RBACProvider: React.FC<{ children: React.ReactNode }> = ({ children
         buatPengumuman,
         hapusPengumuman,
         toggleRolePermission,
+        saveRolePermissions,
         resetPermissionsToDefault,
+        isRealtimeActive,
+        lastSyncTimestamp,
+        exportFullBackupJSON,
+        importFullBackupJSON,
         logAudit,
         resetAllToDefault,
+        resetToZero,
       }}
     >
       {children}

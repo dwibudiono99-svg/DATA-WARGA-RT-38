@@ -51,7 +51,9 @@ export type PermissionKey =
   | 'laporan:manage'
   | 'pengumuman:create'
   | 'audit:view'
-  | 'roles:manage_permissions';
+  | 'roles:manage_permissions'
+  | 'pelaporan:view'
+  | 'backup:manage';
 
 export interface PermissionDefinition {
   key: PermissionKey;
@@ -80,6 +82,8 @@ export interface User {
   lastLogin?: string;
 }
 
+export type StatusVerifikasiKK = 'Terverifikasi' | 'Belum Lengkap';
+
 export interface WargaItem {
   id: string;
   namaLengkap: string;
@@ -96,6 +100,7 @@ export interface WargaItem {
   jumlahAnggotaKeluarga: number;
   tanggalMasuk: string;
   catatanKhusus?: string;
+  statusVerifikasiKK?: StatusVerifikasiKK;
 }
 
 export interface IuranItem {

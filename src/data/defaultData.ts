@@ -143,6 +143,18 @@ export const PERMISSION_DEFINITIONS: PermissionDefinition[] = [
     description: 'Dapat menyesuaikan permission antara Pengurus RT dan Warga Penghuni',
     module: 'Audit & Sistem',
   },
+  {
+    key: 'pelaporan:view',
+    name: 'Unduh Pelaporan & Rekap Ekspor RT',
+    description: 'Dapat mencetak dan mengunduh laporan kependudukan, keuangan, dan surat resmi',
+    module: 'Audit & Sistem',
+  },
+  {
+    key: 'backup:manage',
+    name: 'Cadangan & Pemulihan Sistem (Backup/Import)',
+    description: 'Dapat mengunduh file cadangan sistem lengkap, memulihkan data, dan reset database',
+    module: 'Audit & Sistem',
+  },
 ];
 
 export const DEFAULT_ROLE_PERMISSIONS: RolePermissions = {
@@ -168,6 +180,8 @@ export const DEFAULT_ROLE_PERMISSIONS: RolePermissions = {
     'pengumuman:create',
     'audit:view',
     'roles:manage_permissions',
+    'pelaporan:view',
+    'backup:manage',
   ],
   user: [
     'dashboard:view',
@@ -394,6 +408,7 @@ export const INITIAL_WARGA: WargaItem[] = [
     jumlahAnggotaKeluarga: 4,
     tanggalMasuk: '2018-05-10',
     catatanKhusus: 'Ketua RT periode 2024-2029',
+    statusVerifikasiKK: 'Terverifikasi',
   },
   {
     id: 'wrg_02',
@@ -411,6 +426,7 @@ export const INITIAL_WARGA: WargaItem[] = [
     jumlahAnggotaKeluarga: 3,
     tanggalMasuk: '2019-08-20',
     catatanKhusus: 'Koordinator Konsumsi Warga',
+    statusVerifikasiKK: 'Terverifikasi',
   },
   {
     id: 'wrg_03',
@@ -428,6 +444,7 @@ export const INITIAL_WARGA: WargaItem[] = [
     jumlahAnggotaKeluarga: 2,
     tanggalMasuk: '2023-01-15',
     catatanKhusus: 'Masa sewa s.d. Desember 2026',
+    statusVerifikasiKK: 'Belum Lengkap',
   },
   {
     id: 'wrg_04',
@@ -445,6 +462,7 @@ export const INITIAL_WARGA: WargaItem[] = [
     jumlahAnggotaKeluarga: 4,
     tanggalMasuk: '2020-03-01',
     catatanKhusus: 'Bendahara Kas RT 04',
+    statusVerifikasiKK: 'Terverifikasi',
   },
   {
     id: 'wrg_05',
@@ -461,6 +479,7 @@ export const INITIAL_WARGA: WargaItem[] = [
     email: 'hendro.prasetyo@gmail.com',
     jumlahAnggotaKeluarga: 5,
     tanggalMasuk: '2018-11-12',
+    statusVerifikasiKK: 'Belum Lengkap',
   },
 ];
 

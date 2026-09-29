@@ -21,6 +21,7 @@ import { LaporanLingkunganView } from './components/WargaView/LaporanLingkunganV
 import { PetugasKeamananView } from './components/PetugasKeamananView';
 import { PermissionMatrix } from './components/AdminView/PermissionMatrix';
 import { AuditLogViewer } from './components/AdminView/AuditLogViewer';
+import { PelaporanDanBackupView } from './components/AdminView/PelaporanDanBackupView';
 
 // Warga Penghuni Views
 import { WargaDashboard } from './components/WargaView/WargaDashboard';
@@ -71,7 +72,7 @@ function AppContent() {
   React.useEffect(() => {
     if (isAdmin && (currentTab === 'user-dashboard' || currentTab === 'data-saya' || currentTab === 'sandbox')) {
       setCurrentTab('dashboard');
-    } else if (!isAdmin && (currentTab === 'dashboard' || currentTab === 'warga' || currentTab === 'matrix' || currentTab === 'audit')) {
+    } else if (!isAdmin && (currentTab === 'dashboard' || currentTab === 'warga' || currentTab === 'matrix' || currentTab === 'audit' || currentTab === 'pelaporan')) {
       setCurrentTab('user-dashboard');
     }
   }, [isAdmin]);
@@ -109,6 +110,7 @@ function AppContent() {
             {currentTab === 'iuran' && <IuranManagement />}
             {currentTab === 'surat' && <LayananSuratRT />}
             {currentTab === 'keamanan' && <PetugasKeamananView />}
+            {currentTab === 'pelaporan' && <PelaporanDanBackupView />}
             {currentTab === 'laporan' && <LaporanLingkunganView />}
             {currentTab === 'matrix' && <PermissionMatrix />}
             {currentTab === 'audit' && <AuditLogViewer />}
