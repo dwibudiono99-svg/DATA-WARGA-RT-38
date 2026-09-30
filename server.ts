@@ -65,7 +65,7 @@ Struktur JSON yang harus dikembalikan:
   "kabupatenKota": "Kabupaten atau Kota",
   "provinsi": "Provinsi",
   "kodePos": "Kode Pos",
-  "estimasiBlok": "Blok A/B/C/D jika tertera",
+  "estimasiBlok": "Blok AE/DB/DC/DF/DG jika tertera",
   "estimasiNomor": "Nomor rumah jika tertera",
   "statusHunian": "Tetap",
   "pekerjaanKepalaKeluarga": "Pekerjaan",
@@ -131,8 +131,8 @@ app.post('/api/generate-surat-ai', async (req, res) => {
       jenisSurat,
       keperluan,
       namaKetuaRT = 'Ir. Budi Santoso, M.Sc.',
-      rtRw = 'RT 04 / RW 09',
-      namaPerumahan = 'Perumahan Griya Asri Pratama',
+      rtRw = 'RT 38 / RW 09',
+      namaPerumahan = 'Perumahan Griya Taman Asri',
       instruksiKhusus,
     } = req.body;
 
@@ -206,12 +206,12 @@ function generateFallbackSuratAI(params: any) {
   const {
     namaPemohon = 'Warga Terdaftar',
     nikPemohon = '327601XXXXXXXXXX',
-    blokRumah = 'Blok A',
+    blokRumah = 'Blok AE',
     nomorRumah = '01',
     jenisSurat = 'Surat Keterangan Domisili',
     keperluan = 'Kelengkapan administrasi berkas kependudukan',
-    rtRw = 'RT 04 / RW 09',
-    namaPerumahan = 'Perumahan Griya Asri Pratama',
+    rtRw = 'RT 38 / RW 09',
+    namaPerumahan = 'Perumahan Griya Taman Asri_Cluster Sunsiviera',
   } = params || {};
 
   return {

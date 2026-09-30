@@ -344,7 +344,7 @@ export const EditKopRTModal: React.FC<EditKopRTModalProps> = ({ isOpen, onClose 
                     value={formData.headerBaris2 || `KECAMATAN ${formData.kecamatan.toUpperCase()} - KELURAHAN ${formData.kelurahan.toUpperCase()}`}
                     onChange={(e) => handleChange('headerBaris2', e.target.value)}
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl font-semibold uppercase text-slate-900 focus:bg-white focus:outline-hidden focus:border-emerald-500"
-                    placeholder="Contoh: KECAMATAN CILODONG - KELURAHAN SUKAMAJU INDAH"
+                    placeholder="Contoh: KECAMATAN TAMAN  - KELURAHAN SEPANJANG"
                   />
                 </div>
 
@@ -357,7 +357,7 @@ export const EditKopRTModal: React.FC<EditKopRTModalProps> = ({ isOpen, onClose 
                     value={formData.headerBaris3 || `RUKUN TETANGGA ${formData.rtRw.split('/')[0]?.trim()} / RUKUN WARGA ${formData.rtRw.split('/')[1]?.trim()}`}
                     onChange={(e) => handleChange('headerBaris3', e.target.value)}
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl font-semibold uppercase text-slate-900 focus:bg-white focus:outline-hidden focus:border-emerald-500"
-                    placeholder="Contoh: RUKUN TETANGGA 04 / RUKUN WARGA 09"
+                    placeholder="Contoh: RUKUN TETANGGA 38 / RUKUN WARGA 09"
                   />
                 </div>
 
@@ -370,7 +370,7 @@ export const EditKopRTModal: React.FC<EditKopRTModalProps> = ({ isOpen, onClose 
                     value={formData.headerBaris4 || formData.namaPerumahan.toUpperCase()}
                     onChange={(e) => handleChange('headerBaris4', e.target.value)}
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl font-semibold uppercase text-slate-900 focus:bg-white focus:outline-hidden focus:border-emerald-500"
-                    placeholder="Contoh: PERUMAHAN GRIYA ASRI PRATAMA"
+                    placeholder="Contoh: PERUMAHAN GRIYA TAMAN ASRI_CLUSTER SUNSIVIERA"
                   />
                 </div>
               </div>
@@ -422,7 +422,7 @@ export const EditKopRTModal: React.FC<EditKopRTModalProps> = ({ isOpen, onClose 
                     type="email"
                     value={formData.emailRT || ''}
                     onChange={(e) => handleChange('emailRT', e.target.value)}
-                    placeholder="rt04.rw09@gmail.com"
+                    placeholder="rt38.rw09_gritas@gmail.com"
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl font-medium text-slate-900 focus:bg-white focus:outline-hidden focus:border-emerald-500"
                   />
                 </div>
@@ -476,14 +476,14 @@ export const EditKopRTModal: React.FC<EditKopRTModalProps> = ({ isOpen, onClose 
                       />
                     </div>
                     <span className="font-bold text-[11px] text-slate-900 block">Pemda Depok</span>
-                    <span className="text-[9px] text-slate-500">Jawa Barat</span>
+                    <span className="text-[9px] text-slate-500">Jawa Timur</span>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => setPresetLogo('pemda_dki')}
                     className={`p-2.5 rounded-2xl border text-center transition-all cursor-pointer ${
-                      formData.logoResmiKiri?.includes('Jakarta')
+                      formData.logoResmiKiri?.includes('Surabaya')
                         ? 'border-emerald-500 bg-emerald-50/50 shadow-xs'
                         : 'border-slate-200 hover:border-slate-300 bg-white'
                     }`}

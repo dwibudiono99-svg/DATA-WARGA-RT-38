@@ -2,7 +2,7 @@ export type Role = 'admin' | 'user';
 
 export type UserStatus = 'active' | 'inactive' | 'suspended';
 
-export type BlokRumah = 'Blok A' | 'Blok B' | 'Blok C' | 'Blok D';
+export type BlokRumah = 'Blok AE' | 'Blok DB' | 'Blok DC' | 'Blok DE' | 'Blok DF' | 'Blok DG';
 
 export type StatusHunian = 'Tetap' | 'Kontrak/Sewa' | 'Kost';
 
