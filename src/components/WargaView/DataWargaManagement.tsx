@@ -96,12 +96,12 @@ export const DataWargaManagement: React.FC<DataWargaManagementProps> = ({ onOpen
     namaLengkap: '',
     nik: '',
     noKK: '',
-    blokRumah: 'Blok A',
-    nomorRumah: 'A-01',
+    blokRumah: 'Blok AE',
+    nomorRumah: 'AE-01',
     statusHunian: 'Tetap',
     statusKeluarga: 'Kepala Keluarga',
     jenisKelamin: 'Laki-laki',
-    tempatLahir: 'Depok',
+    tempatLahir: 'Sidoarjo',
     tanggalLahir: '1985-01-01',
     agama: 'Islam',
     pendidikan: 'Diploma IV / Strata I',
@@ -159,12 +159,12 @@ export const DataWargaManagement: React.FC<DataWargaManagementProps> = ({ onOpen
       namaLengkap: '',
       nik: randomNik,
       noKK: randomKK,
-      blokRumah: 'Blok A',
-      nomorRumah: 'A-10',
+      blokRumah: 'Blok AE',
+      nomorRumah: 'AE-10',
       statusHunian: 'Tetap',
       statusKeluarga: 'Kepala Keluarga',
       jenisKelamin: 'Laki-laki',
-      tempatLahir: 'Depok',
+      tempatLahir: 'Sidoarjo',
       tanggalLahir: '1985-05-12',
       agama: 'Islam',
       pendidikan: 'Diploma IV / Strata I',
@@ -513,10 +513,12 @@ export const DataWargaManagement: React.FC<DataWargaManagementProps> = ({ onOpen
             className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 cursor-pointer"
           >
             <option value="all">Semua Blok</option>
-            <option value="Blok A">Blok A</option>
-            <option value="Blok B">Blok B</option>
-            <option value="Blok C">Blok C</option>
-            <option value="Blok D">Blok D</option>
+            <option value="Blok AE">Blok AE</option>
+            <option value="Blok DB">Blok DB</option>
+            <option value="Blok DC">Blok DC</option>
+            <option value="Blok DE">Blok DE</option>
+            <option value="Blok DF">Blok DF</option>
+            <option value="Blok DG">Blok DG</option>
           </select>
 
           {/* Status Hunian Filter */}
@@ -840,10 +842,12 @@ export const DataWargaManagement: React.FC<DataWargaManagementProps> = ({ onOpen
                         onChange={(e) => setFormData({ ...formData, blokRumah: e.target.value as BlokRumah })}
                         className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl font-semibold text-slate-900"
                       >
-                        <option value="Blok A">Blok A</option>
-                        <option value="Blok B">Blok B</option>
-                        <option value="Blok C">Blok C</option>
-                        <option value="Blok D">Blok D</option>
+                        <option value="Blok AE">Blok AE</option>
+                        <option value="Blok DB">Blok DB</option>
+                        <option value="Blok DC">Blok DC</option>
+                        <option value="Blok DE">Blok DE</option>
+                        <option value="Blok DF">Blok DF</option>
+                        <option value="Blok DG">Blok DG</option>
                       </select>
                     </div>
 
@@ -1398,10 +1402,12 @@ export const DataWargaManagement: React.FC<DataWargaManagementProps> = ({ onOpen
                         onChange={(e) => setFormData({ ...formData, blokRumah: e.target.value as BlokRumah })}
                         className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl font-semibold text-slate-900"
                       >
-                        <option value="Blok A">Blok A</option>
-                        <option value="Blok B">Blok B</option>
-                        <option value="Blok C">Blok C</option>
-                        <option value="Blok D">Blok D</option>
+                        <option value="Blok AE">Blok AE</option>
+                        <option value="Blok DB">Blok DB</option>
+                        <option value="Blok DC">Blok DC</option>
+                        <option value="Blok DE">Blok DE</option>
+                        <option value="Blok DF">Blok DF</option>
+                        <option value="Blok DG">Blok DG</option>
                       </select>
                     </div>
 

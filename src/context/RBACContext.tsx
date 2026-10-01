@@ -16,6 +16,7 @@ import {
   StatusLaporan,
   JenisSuratConfig,
   PetugasKeamanan,
+  NotifikasiSimulasi,
 } from '../types/rbac';
 import {
   DEFAULT_ROLE_PERMISSIONS,
@@ -29,6 +30,7 @@ import {
   INITIAL_AUDIT_LOGS,
   INITIAL_JENIS_SURAT,
   INITIAL_PETUGAS_KEAMANAN,
+  INITIAL_NOTIFIKASI,
   PERMISSION_DEFINITIONS,
 } from '../data/defaultData';
 
@@ -111,6 +113,14 @@ interface RBACContextType {
   exportFullBackupJSON: () => void;
   importFullBackupJSON: (backupObj: any, mode: 'replace' | 'merge') => boolean;
 
+  // Sistem Notifikasi Warga (Simulasi)
+  notifikasiList: NotifikasiSimulasi[];
+  kirimNotifikasiSimulasi: (notif: Omit<NotifikasiSimulasi, 'id' | 'timestamp' | 'statusKirim'>) => NotifikasiSimulasi;
+  kirimPengingatIuranJatuhTempo: (iuranId: string) => boolean;
+  kirimPengingatIuranMassal: () => number;
+  hapusNotifikasi: (id: string) => boolean;
+  tandaiNotifikasiDibaca: (id: string) => void;
+
   // Audit & Reset
   logAudit: (action: string, moduleName: string, status: 'success' | 'denied', details: string) => void;
   resetAllToDefault: () => void;
@@ -132,6 +142,7 @@ const STORAGE_KEYS = {
   PERMISSIONS: 'sim_warga_permissions',
   AUDIT_LOGS: 'sim_warga_audit_logs',
   INFO: 'sim_warga_info_perumahan',
+  NOTIFIKASI: 'sim_warga_notifikasi',
 };
 
 export const RBACProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -156,9 +167,32 @@ export const RBACProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [infoPerumahan, setInfoPerumahan] = useState<InfoPerumahan>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEYS.INFO);
-      return saved ? { ...INITIAL_INFO_PERUMAHAN, ...JSON.parse(saved) } : INITIAL_INFO_PERUMAHAN;
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        // If saved data is from old RT 04 or Depok default, migrate to official RT 38 Sepanjang Taman Sidoarjo
+        if (
+          parsed.rtRw === 'RT 04 / RW 09' ||
+          parsed.kelurahan === 'Sukamaju Indah' ||
+          parsed.namaPerumahan?.includes('Griya Asri Pratama') ||
+          parsed.headerBaris3?.includes('RT 04') ||
+          parsed.headerBaris3?.includes('RT 39')
+        ) {
+          return INITIAL_INFO_PERUMAHAN;
+        }
+        return { ...INITIAL_INFO_PERUMAHAN, ...parsed };
+      }
+      return INITIAL_INFO_PERUMAHAN;
     } catch {
       return INITIAL_INFO_PERUMAHAN;
+    }
+  });
+
+  const [notifikasiList, setNotifikasiList] = useState<NotifikasiSimulasi[]>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEYS.NOTIFIKASI);
+      return saved ? JSON.parse(saved) : INITIAL_NOTIFIKASI;
+    } catch {
+      return INITIAL_NOTIFIKASI;
     }
   });
 
@@ -369,6 +403,10 @@ export const RBACProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.AUDIT_LOGS, JSON.stringify(auditLogs));
   }, [auditLogs]);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.NOTIFIKASI, JSON.stringify(notifikasiList));
+  }, [notifikasiList]);
 
   const currentUser = users.find((u) => u.id === currentUserId) || users[0];
 
@@ -596,7 +634,10 @@ export const RBACProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!canExecute('surat:approve', 'Menandatangani & Menerbitkan Surat RT Resmi', 'Layanan Surat RT')) return false;
 
     const romanMonth = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII'][new Date().getMonth()];
-    const nomorResmi = disetujui ? `${Math.floor(100 + Math.random() * 899)}/RT.04/RW.09/${romanMonth}/2026` : undefined;
+    const nomorResmi = disetujui ? `${Math.floor(100 + Math.random() * 899)}/RT.38-RW.09/${romanMonth}/2026` : undefined;
+    const nowIso = new Date().toISOString();
+
+    const targetSurat = suratList.find((s) => s.id === suratId);
 
     setSuratList((prev) =>
       prev.map((s) =>
@@ -605,20 +646,145 @@ export const RBACProvider: React.FC<{ children: React.ReactNode }> = ({ children
               ...s,
               status: disetujui ? 'Disetujui / Terbit' : 'Ditolak',
               nomorSuratResmi: nomorResmi,
-              catatanAdmin: catatan || (disetujui ? 'Surat telah diverifikasi & ditandatangani Ketua RT 04.' : 'Berkas belum memenuhi syarat.'),
-              tanggalSelesai: new Date().toISOString().split('T')[0],
+              catatanAdmin: catatan || (disetujui ? 'Surat telah diverifikasi & ditandatangani Ketua RT 38 / RW 09 Sepanjang.' : 'Berkas belum memenuhi syarat.'),
+              tanggalSelesai: nowIso.split('T')[0],
+              notifikasiTerkirim: disetujui ? true : false,
+              tanggalNotifikasi: disetujui ? nowIso : undefined,
+              saluranNotifikasi: disetujui ? 'WhatsApp' : undefined,
             }
           : s
       )
     );
 
+    // Auto-dispatch simulated notification to applicant when letter is approved
+    if (disetujui && targetSurat) {
+      const wargaTarget = wargaList.find(
+        (w) => w.namaLengkap.toLowerCase() === targetSurat.namaPemohon.toLowerCase()
+      );
+      kirimNotifikasiSimulasi({
+        targetWargaNama: targetSurat.namaPemohon,
+        targetRumah: `${targetSurat.blokRumah} No. ${targetSurat.nomorRumah}`,
+        targetNoHp: wargaTarget?.noHp || '+62 812-3456-7890',
+        tipe: 'surat_disetujui',
+        judul: `Surat Pengantar Disetujui: ${targetSurat.jenisSurat}`,
+        pesan: `Yth. Bapak/Ibu ${targetSurat.namaPemohon}, permohonan surat pengantar "${targetSurat.jenisSurat}" (No: ${nomorResmi}) telah DISETUJUI dan ditandatangani secara resmi oleh Ketua RT 38 / RW 09 Sepanjang. Surat resmi siap diunduh dan dicetak dari Portal SIM-Warga.`,
+        channel: 'WhatsApp Web Simulator',
+        meta: {
+          suratId: targetSurat.id,
+          nomorSuratResmi: nomorResmi,
+        },
+      });
+    }
+
     logAudit(
       'SURAT_PROSES',
       'Layanan Surat RT',
       'success',
-      `Ketua RT ${disetujui ? 'menyetujui & menerbitkan surat ' + nomorResmi : 'menolak permohonan surat'}.`
+      `Ketua RT ${disetujui ? 'menyetujui & menerbitkan surat ' + nomorResmi + ' serta mengirimkan notifikasi simulasi ke warga' : 'menolak permohonan surat'}.`
     );
     return true;
+  };
+
+  // Sistem Notifikasi Warga (Simulasi)
+  const kirimNotifikasiSimulasi = (notif: Omit<NotifikasiSimulasi, 'id' | 'timestamp' | 'statusKirim'>): NotifikasiSimulasi => {
+    const newNotif: NotifikasiSimulasi = {
+      ...notif,
+      id: `notif_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+      timestamp: new Date().toISOString(),
+      statusKirim: 'terkirim',
+      dibaca: false,
+    };
+    setNotifikasiList((prev) => [newNotif, ...prev]);
+    notifyRealtimeSync({ type: 'NOTIFIKASI_BARU', notifikasi: newNotif });
+    logAudit('NOTIFIKASI_KIRIM', 'Sistem Notifikasi RT', 'success', `Simulasi notifikasi ${notif.tipe} dikirim ke ${notif.targetWargaNama} (${notif.targetRumah}).`);
+    return newNotif;
+  };
+
+  const kirimPengingatIuranJatuhTempo = (iuranId: string): boolean => {
+    const iuran = iuranList.find((i) => i.id === iuranId);
+    if (!iuran) return false;
+    const targetWarga = wargaList.find((w) => w.namaLengkap.toLowerCase() === iuran.namaWarga.toLowerCase());
+    const nominalFormatted = 'Rp ' + iuran.nominal.toLocaleString('id-ID');
+    const nowIso = new Date().toISOString();
+
+    setIuranList((prev) =>
+      prev.map((i) =>
+        i.id === iuranId
+          ? {
+              ...i,
+              terakhirNotifikasiJatuhTempo: nowIso,
+              catatanNotifikasi: 'Pengingat WhatsApp terkirim via SIM-Warga',
+            }
+          : i
+      )
+    );
+
+    kirimNotifikasiSimulasi({
+      targetWargaNama: iuran.namaWarga,
+      targetRumah: `${iuran.blokRumah} No. ${iuran.nomorRumah}`,
+      targetNoHp: targetWarga?.noHp || '+62 812-3456-7890',
+      tipe: 'iuran_jatuh_tempo',
+      judul: `Pemberitahuan Jatuh Tempo: ${iuran.jenisIuran}`,
+      pesan: `Pemberitahuan dari Pengurus RT 38 / RW 09 Griyo Taman Asri: Tagihan ${iuran.jenisIuran} periode ${iuran.periodeBulan} sebesar ${nominalFormatted} untuk kediaman ${iuran.blokRumah} No. ${iuran.nomorRumah} telah JATUH TEMPO. Mohon segera melakukan pembayaran via QRIS / Rekening Kas RT pada Portal SIM-Warga. Terima kasih atas partisipasi aktif Anda.`,
+      channel: 'WhatsApp Web Simulator',
+      meta: {
+        iuranId: iuran.id,
+        nominal: iuran.nominal,
+        periode: iuran.periodeBulan,
+      },
+    });
+
+    return true;
+  };
+
+  const kirimPengingatIuranMassal = (): number => {
+    const unpaid = iuranList.filter((i) => i.statusBayar !== 'Lunas');
+    if (unpaid.length === 0) return 0;
+    const nowIso = new Date().toISOString();
+
+    unpaid.forEach((iuran) => {
+      const targetWarga = wargaList.find((w) => w.namaLengkap.toLowerCase() === iuran.namaWarga.toLowerCase());
+      const nominalFormatted = 'Rp ' + iuran.nominal.toLocaleString('id-ID');
+      kirimNotifikasiSimulasi({
+        targetWargaNama: iuran.namaWarga,
+        targetRumah: `${iuran.blokRumah} No. ${iuran.nomorRumah}`,
+        targetNoHp: targetWarga?.noHp || '+62 812-3456-7890',
+        tipe: 'iuran_jatuh_tempo',
+        judul: `Pemberitahuan Jatuh Tempo: ${iuran.jenisIuran}`,
+        pesan: `Pemberitahuan dari Pengurus RT 38 / RW 09 Griyo Taman Asri: Tagihan ${iuran.jenisIuran} periode ${iuran.periodeBulan} sebesar ${nominalFormatted} untuk kediaman ${iuran.blokRumah} No. ${iuran.nomorRumah} telah JATUH TEMPO. Mohon segera melakukan pembayaran via QRIS / Rekening Kas RT pada Portal SIM-Warga. Terima kasih atas partisipasi aktif Anda.`,
+        channel: 'WhatsApp Web Simulator',
+        meta: {
+          iuranId: iuran.id,
+          nominal: iuran.nominal,
+          periode: iuran.periodeBulan,
+        },
+      });
+    });
+
+    setIuranList((prev) =>
+      prev.map((i) =>
+        i.statusBayar !== 'Lunas'
+          ? {
+              ...i,
+              terakhirNotifikasiJatuhTempo: nowIso,
+              catatanNotifikasi: 'Pengingat massal WhatsApp terkirim via SIM-Warga',
+            }
+          : i
+      )
+    );
+
+    return unpaid.length;
+  };
+
+  const hapusNotifikasi = (id: string): boolean => {
+    setNotifikasiList((prev) => prev.filter((n) => n.id !== id));
+    return true;
+  };
+
+  const tandaiNotifikasiDibaca = (id: string) => {
+    setNotifikasiList((prev) =>
+      prev.map((n) => (n.id === id ? { ...n, dibaca: true } : n))
+    );
   };
 
   // Jenis Surat Management
@@ -1107,6 +1273,12 @@ export const RBACProvider: React.FC<{ children: React.ReactNode }> = ({ children
         resetPermissionsToDefault,
         isRealtimeActive,
         lastSyncTimestamp,
+        notifikasiList,
+        kirimNotifikasiSimulasi,
+        kirimPengingatIuranJatuhTempo,
+        kirimPengingatIuranMassal,
+        hapusNotifikasi,
+        tandaiNotifikasiDibaca,
         exportFullBackupJSON,
         importFullBackupJSON,
         logAudit,

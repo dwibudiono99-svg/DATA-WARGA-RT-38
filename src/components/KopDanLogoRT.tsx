@@ -130,7 +130,7 @@ export const KopDanLogoRT: React.FC<KopDanLogoRTProps> = ({
                       fontFamily="sans-serif"
                       letterSpacing="0.5"
                     >
-                      RT 04 / RW 09
+                      {infoPerumahan.rtRw || 'RT 38 / RW 09'}
                     </text>
                   </svg>
                   <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/10 to-transparent pointer-events-none" />
@@ -146,7 +146,7 @@ export const KopDanLogoRT: React.FC<KopDanLogoRTProps> = ({
             <div className="space-y-1">
               <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
                 <span className="text-[10px] font-extrabold tracking-widest text-emerald-800 uppercase bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
-                  {infoPerumahan.headerBaris1 || 'PEMERINTAH KOTA DEPOK'}
+                  {infoPerumahan.headerBaris1 || 'PEMERINTAH KABUPATEN SIDOARJO'}
                 </span>
                 <span className="text-[10px] font-bold text-slate-500">
                   {infoPerumahan.nomorSK || 'SK Kelurahan No. 142/SK-RT/2024'}

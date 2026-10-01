@@ -2,7 +2,17 @@ export type Role = 'admin' | 'user';
 
 export type UserStatus = 'active' | 'inactive' | 'suspended';
 
-export type BlokRumah = 'Blok AE' | 'Blok DB' | 'Blok DC' | 'Blok DE' | 'Blok DF' | 'Blok DG';
+export type BlokRumah =
+  | 'Blok AE'
+  | 'Blok DB'
+  | 'Blok DC'
+  | 'Blok DE'
+  | 'Blok DF'
+  | 'Blok DG'
+  | 'Blok A'
+  | 'Blok B'
+  | 'Blok C'
+  | 'Blok D';
 
 export type StatusHunian = 'Tetap' | 'Kontrak/Sewa' | 'Kost';
 
@@ -167,6 +177,9 @@ export interface IuranItem {
   tanggalBayar?: string;
   metodePembayaran?: string;
   buktiBayar?: string;
+  terakhirNotifikasiJatuhTempo?: string;
+  catatanNotifikasi?: string;
+  jatuhTempoTanggal?: string;
 }
 
 export interface JenisSuratConfig {
@@ -215,6 +228,32 @@ export interface SuratItem {
   drafSuratAI?: string;
   alasanFormalAI?: string;
   catatanAI?: string;
+  // Notification fields
+  notifikasiTerkirim?: boolean;
+  tanggalNotifikasi?: string;
+  saluranNotifikasi?: 'WhatsApp' | 'SMS' | 'Aplikasi';
+}
+
+export interface NotifikasiSimulasi {
+  id: string;
+  targetWargaNama: string;
+  targetRumah: string;
+  targetNoHp?: string;
+  tipe: 'surat_disetujui' | 'iuran_jatuh_tempo' | 'info_umum';
+  judul: string;
+  pesan: string;
+  timestamp: string;
+  statusKirim: 'terkirim' | 'pending';
+  channel: 'WhatsApp Web Simulator' | 'SMS Gateway' | 'Aplikasi Warga';
+  dibaca?: boolean;
+  meta?: {
+    suratId?: string;
+    nomorSuratResmi?: string;
+    iuranId?: string;
+    nominal?: number;
+    periode?: string;
+    linkSurat?: string;
+  };
 }
 
 export interface PetugasKeamanan {

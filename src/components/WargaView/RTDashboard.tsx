@@ -29,6 +29,7 @@ import { WebHostingBanner } from '../WebHostingBanner';
 import { EditKopRTModal } from '../EditKopRTModal';
 import { JenisSuratManagerModal } from '../JenisSuratManagerModal';
 import { IuranStatistikChart } from '../IuranStatistikChart';
+import { BlokRumah } from '../../types/rbac';
 
 interface RTDashboardProps {
   onNavigateTab: (tab: string) => void;
@@ -70,12 +71,11 @@ export const RTDashboard: React.FC<RTDashboardProps> = ({
   const pendingSurat = suratList.filter((s) => s.status === 'Menunggu Validasi RT');
   const pendingLaporan = laporanList.filter((l) => l.status === 'Diterima');
 
-  const blokStats = [
-    { name: 'Blok A', count: wargaList.filter((w) => w.blokRumah === 'Blok A').length },
-    { name: 'Blok B', count: wargaList.filter((w) => w.blokRumah === 'Blok B').length },
-    { name: 'Blok C', count: wargaList.filter((w) => w.blokRumah === 'Blok C').length },
-    { name: 'Blok D', count: wargaList.filter((w) => w.blokRumah === 'Blok D').length },
-  ];
+  const mainBlocks: BlokRumah[] = ['Blok AE', 'Blok DB', 'Blok DC', 'Blok DE', 'Blok DF', 'Blok DG'];
+  const blokStats = mainBlocks.map((blok) => ({
+    name: blok,
+    count: wargaList.filter((w) => w.blokRumah === blok).length,
+  }));
 
   return (
     <div className="space-y-6">
@@ -363,7 +363,7 @@ export const RTDashboard: React.FC<RTDashboardProps> = ({
               <span>Peta Distribusi Penghuni Per Blok Perumahan</span>
             </h3>
             <p className="text-xs text-slate-500">
-              Cakupan data kepala keluarga di wilayah RT 04 / RW 09
+              Cakupan data kepala keluarga di wilayah {infoPerumahan.rtRw}
             </p>
           </div>
           <button

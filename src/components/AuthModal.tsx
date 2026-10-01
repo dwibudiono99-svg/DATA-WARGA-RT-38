@@ -15,8 +15,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
   // Register form
   const [nama, setNama] = useState('');
   const [email, setEmail] = useState('');
-  const [blok, setBlok] = useState<BlokRumah>('Blok A');
-  const [nomor, setNomor] = useState('A-15');
+  const [blok, setBlok] = useState<BlokRumah>('Blok AE');
+  const [nomor, setNomor] = useState('AE-15');
   const [role, setRole] = useState<Role>('user');
 
   if (!isOpen) return null;
@@ -158,10 +158,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
                   onChange={(e) => setBlok(e.target.value as BlokRumah)}
                   className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-medium focus:border-emerald-500 focus:outline-hidden"
                 >
-                  <option value="Blok A">Blok A</option>
-                  <option value="Blok B">Blok B</option>
-                  <option value="Blok C">Blok C</option>
-                  <option value="Blok D">Blok D</option>
+                  <option value="Blok AE">Blok AE</option>
+                  <option value="Blok DB">Blok DB</option>
+                  <option value="Blok DC">Blok DC</option>
+                  <option value="Blok DE">Blok DE</option>
+                  <option value="Blok DF">Blok DF</option>
+                  <option value="Blok DG">Blok DG</option>
                 </select>
               </div>
 

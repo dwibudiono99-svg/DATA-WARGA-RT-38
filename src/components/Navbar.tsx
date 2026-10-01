@@ -47,6 +47,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     logout,
     suratList,
     pengumumanList,
+    notifikasiList,
     resetAllToDefault,
   } = useRBAC();
 
@@ -56,7 +57,13 @@ export const Navbar: React.FC<NavbarProps> = ({
   const isAdmin = currentUser.role === 'admin';
   const pendingSuratCount = suratList.filter((s) => s.status === 'Menunggu Validasi RT').length;
   const activeAnnouncementsCount = pengumumanList.filter((a) => a.aktif).length;
-  const totalNotifications = (isAdmin ? pendingSuratCount : 0) + activeAnnouncementsCount;
+  const userNotifications = notifikasiList.filter(
+    (n) =>
+      isAdmin ||
+      n.targetWargaNama.toLowerCase().includes(currentUser.name.toLowerCase()) ||
+      n.targetRumah.toLowerCase().includes(currentUser.nomorRumah.toLowerCase())
+  );
+  const totalNotifications = (isAdmin ? pendingSuratCount : 0) + activeAnnouncementsCount + (isAdmin ? 0 : userNotifications.length);
 
   // Tabs for Admin (Pengurus RT)
   const adminTabs = [
@@ -256,6 +263,49 @@ export const Navbar: React.FC<NavbarProps> = ({
                         </button>
                       </div>
                     )}
+
+                    {/* Simulated Notifications (Surat Disetujui & Iuran Jatuh Tempo) */}
+                    {userNotifications.slice(0, 3).map((notif) => (
+                      <div
+                        key={notif.id}
+                        className={`p-3 rounded-xl text-xs space-y-1 border ${
+                          notif.tipe === 'surat_disetujui'
+                            ? 'bg-emerald-50/80 border-emerald-200'
+                            : 'bg-amber-50/80 border-amber-200'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="font-extrabold text-slate-900 truncate">
+                            {notif.judul}
+                          </span>
+                          <span
+                            className={`text-[8px] px-1.5 py-0.2 rounded-full font-black uppercase ${
+                              notif.tipe === 'surat_disetujui'
+                                ? 'bg-emerald-200 text-emerald-900'
+                                : 'bg-amber-200 text-amber-900'
+                            }`}
+                          >
+                            WA Notif
+                          </span>
+                        </div>
+                        <p className="text-slate-700 text-[11px] leading-relaxed line-clamp-2">
+                          {notif.pesan}
+                        </p>
+                        <div className="flex items-center justify-between text-[10px] text-slate-500 pt-1">
+                          <span>Untuk: {notif.targetWargaNama}</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIsNotifOpen(false);
+                              onTabChange(notif.tipe === 'surat_disetujui' ? (isAdmin ? 'surat' : 'ajukan-surat') : (isAdmin ? 'iuran' : 'bayar-iuran'));
+                            }}
+                            className="font-bold text-emerald-800 hover:underline"
+                          >
+                            Buka Menu &rarr;
+                          </button>
+                        </div>
+                      </div>
+                    ))}
 
                     {pengumumanList.map((anc) => (
                       <div key={anc.id} className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs space-y-1">

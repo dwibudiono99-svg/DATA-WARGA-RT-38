@@ -25,10 +25,14 @@ import {
   CheckCheck,
   ChevronRight,
   Info,
+  Bell,
+  MessageSquare,
+  Send,
 } from 'lucide-react';
-import { SuratItem } from '../../types/rbac';
+import { SuratItem, NotifikasiSimulasi } from '../../types/rbac';
 import { EditKopRTModal } from '../EditKopRTModal';
 import { JenisSuratManagerModal } from '../JenisSuratManagerModal';
+import { ModalSimulasiNotifikasi } from '../ModalSimulasiNotifikasi';
 
 export const LayananSuratRT: React.FC = () => {
   const {
@@ -41,6 +45,8 @@ export const LayananSuratRT: React.FC = () => {
     generateDrafSuratAI,
     canExecute,
     infoPerumahan,
+    notifikasiList,
+    kirimNotifikasiSimulasi,
   } = useRBAC();
 
   const [isApplyModalOpen, setIsApplyModalOpen] = useState(false);
@@ -48,6 +54,11 @@ export const LayananSuratRT: React.FC = () => {
   const [isJenisSuratModalOpen, setIsJenisSuratModalOpen] = useState(false);
   const [viewingLetter, setViewingLetter] = useState<SuratItem | null>(null);
   const [selectedAIReviewSurat, setSelectedAIReviewSurat] = useState<SuratItem | null>(null);
+
+  // Notification Simulation States
+  const [activeSimulasiNotif, setActiveSimulasiNotif] = useState<NotifikasiSimulasi | null>(null);
+  const [isSimulasiModalOpen, setIsSimulasiModalOpen] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // Form states for new application
   const [selectedJenisSuratId, setSelectedJenisSuratId] = useState(jenisSuratList[0]?.nama || 'Surat Keterangan Domisili');
@@ -58,6 +69,11 @@ export const LayananSuratRT: React.FC = () => {
   const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
 
   const isAdmin = currentUser.role === 'admin';
+
+  // For resident view: find any approved letters
+  const myApprovedSurat = suratList.filter(
+    (s) => (s.wargaId === currentUser.id || s.namaPemohon.toLowerCase() === currentUser.name.toLowerCase()) && s.status === 'Disetujui / Terbit'
+  );
 
   const activeJenisSurat = jenisSuratList.filter((j) => j.aktif);
   const currentJenisConfig = jenisSuratList.find((j) => j.nama === selectedJenisSuratId);
@@ -86,6 +102,54 @@ export const LayananSuratRT: React.FC = () => {
   const handleApprove = (surat: SuratItem) => {
     if (!canExecute('surat:approve', 'Menandatangani & Menerbitkan Surat Resmi RT', 'Layanan Surat RT')) return;
     prosesSuratRT(surat.id, true);
+
+    const targetWarga = wargaList.find((w) => w.namaLengkap.toLowerCase() === surat.namaPemohon.toLowerCase());
+    const generatedNotif: NotifikasiSimulasi = {
+      id: `notif_${Date.now()}`,
+      targetWargaNama: surat.namaPemohon,
+      targetRumah: `${surat.blokRumah} No. ${surat.nomorRumah}`,
+      targetNoHp: targetWarga?.noHp || '+62 812-3456-7890',
+      tipe: 'surat_disetujui',
+      judul: `Surat Pengantar Disetujui: ${surat.jenisSurat}`,
+      pesan: `Yth. Bapak/Ibu ${surat.namaPemohon}, permohonan surat pengantar "${surat.jenisSurat}" telah DISETUJUI dan ditandatangani secara resmi oleh Ketua RT 38 / RW 09 Sepanjang. Surat resmi siap diunduh dan dicetak dari Portal SIM-Warga.`,
+      timestamp: new Date().toISOString(),
+      statusKirim: 'terkirim',
+      channel: 'WhatsApp Web Simulator',
+      meta: {
+        suratId: surat.id,
+      },
+    };
+
+    setActiveSimulasiNotif(generatedNotif);
+    setIsSimulasiModalOpen(true);
+    setToastMessage(`✓ Surat "${surat.jenisSurat}" disetujui! Notifikasi WhatsApp otomatis terkirim ke ${surat.namaPemohon}.`);
+    setTimeout(() => setToastMessage(null), 4000);
+  };
+
+  const handleOpenSimulasiNotif = (surat: SuratItem) => {
+    const existing = notifikasiList.find((n) => n.meta?.suratId === surat.id);
+    if (existing) {
+      setActiveSimulasiNotif(existing);
+    } else {
+      const targetWarga = wargaList.find((w) => w.namaLengkap.toLowerCase() === surat.namaPemohon.toLowerCase());
+      setActiveSimulasiNotif({
+        id: `notif_${Date.now()}`,
+        targetWargaNama: surat.namaPemohon,
+        targetRumah: `${surat.blokRumah} No. ${surat.nomorRumah}`,
+        targetNoHp: targetWarga?.noHp || '+62 812-3456-7890',
+        tipe: 'surat_disetujui',
+        judul: `Surat Pengantar Disetujui: ${surat.jenisSurat}`,
+        pesan: `Yth. Bapak/Ibu ${surat.namaPemohon}, permohonan surat pengantar "${surat.jenisSurat}" (No: ${surat.nomorSuratResmi || 'Nomor Terbit'}) telah DISETUJUI dan ditandatangani secara resmi oleh Ketua RT 38 / RW 09 Sepanjang. Surat kini dapat diunduh dan dicetak dari Portal SIM-Warga.`,
+        timestamp: surat.tanggalNotifikasi || new Date().toISOString(),
+        statusKirim: 'terkirim',
+        channel: 'WhatsApp Web Simulator',
+        meta: {
+          suratId: surat.id,
+          nomorSuratResmi: surat.nomorSuratResmi,
+        },
+      });
+    }
+    setIsSimulasiModalOpen(true);
   };
 
   const handleReject = (surat: SuratItem) => {
@@ -195,6 +259,57 @@ export const LayananSuratRT: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {/* Toast Alert */}
+      {toastMessage && (
+        <div className="fixed bottom-6 right-6 z-50 bg-slate-900 text-white px-4 py-3 rounded-2xl shadow-xl border border-slate-700 text-xs font-bold flex items-center gap-2.5 animate-in slide-in-from-bottom-3">
+          <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping" />
+          <span>{toastMessage}</span>
+        </div>
+      )}
+
+      {/* Resident View: Approved Letter Ready Announcement */}
+      {!isAdmin && myApprovedSurat.length > 0 && (
+        <div className="bg-emerald-50 border-2 border-emerald-300 rounded-3xl p-5 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-xs animate-in fade-in">
+          <div className="flex items-start gap-3">
+            <div className="p-2 rounded-2xl bg-emerald-600 text-white shadow-xs">
+              <CheckCircle2 className="w-5 h-5" />
+            </div>
+            <div className="space-y-0.5">
+              <div className="flex items-center gap-2">
+                <span className="bg-emerald-200 text-emerald-950 font-black text-[9px] uppercase px-2 py-0.5 rounded-full">
+                  Status: Disetujui
+                </span>
+                <p className="font-extrabold text-emerald-950 text-sm">
+                  Surat Pengantar Anda Telah Terbit!
+                </p>
+              </div>
+              <p className="text-emerald-800 text-xs">
+                Permohonan <strong>"{myApprovedSurat[0].jenisSurat}"</strong> Anda telah ditandatangani oleh Ketua RT 38 / RW 09 Sepanjang (No: {myApprovedSurat[0].nomorSuratResmi || 'Resmi Terbit'}). Dokumen telah siap dicetak dan notifikasi WhatsApp simulasi telah terkirim.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={() => handleOpenSimulasiNotif(myApprovedSurat[0])}
+              className="px-3.5 py-2 bg-white hover:bg-emerald-100 text-emerald-900 border border-emerald-300 rounded-xl font-bold transition-colors cursor-pointer flex items-center gap-1.5 shadow-2xs"
+            >
+              <Bell className="w-3.5 h-3.5 text-emerald-600" />
+              <span>Lihat Pesan WA RT</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewingLetter(myApprovedSurat[0])}
+              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold transition-colors cursor-pointer flex items-center gap-1.5 shadow-sm shadow-emerald-600/20"
+            >
+              <Printer className="w-3.5 h-3.5" />
+              <span>Cetak Dokumen</span>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* AI COMPANION SHOWCASE: Contoh Pendampingan AI pada Surat yang Dikerjakan */}
       <div className="bg-gradient-to-br from-indigo-950 via-slate-900 to-indigo-900 rounded-3xl p-5 sm:p-6 text-white border border-indigo-500/30 shadow-xl space-y-4">
@@ -431,15 +546,27 @@ export const LayananSuratRT: React.FC = () => {
 
                   {/* View / Print letterhead button */}
                   {isApproved && (
-                    <button
-                      type="button"
-                      onClick={() => setViewingLetter(surat)}
-                      className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-[11px] font-bold flex items-center gap-1 transition-colors cursor-pointer shadow-xs"
-                      title="Lihat Format Kertas Kop Surat Resmi RT"
-                    >
-                      <Printer className="w-3.5 h-3.5" />
-                      <span>Cetak Surat</span>
-                    </button>
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => handleOpenSimulasiNotif(surat)}
+                        className="px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-xl text-[11px] font-bold flex items-center gap-1 transition-colors cursor-pointer"
+                        title="Lihat Simulasi Notifikasi WhatsApp Warga"
+                      >
+                        <MessageSquare className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>Notif WA</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setViewingLetter(surat)}
+                        className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-[11px] font-bold flex items-center gap-1 transition-colors cursor-pointer shadow-xs"
+                        title="Lihat Format Kertas Kop Surat Resmi RT"
+                      >
+                        <Printer className="w-3.5 h-3.5" />
+                        <span>Cetak Surat</span>
+                      </button>
+                    </>
                   )}
 
                   {/* Admin Approval Buttons */}
@@ -998,14 +1125,14 @@ export const LayananSuratRT: React.FC = () => {
                     {/* Pengesahan Ketua RT */}
                     <div className="flex-1 space-y-16 relative">
                       <p>
-                        Ketua Rukun Tetangga {infoPerumahan.rtRw.split('/')[0]?.trim() || 'RT 04'},
+                        Ketua Rukun Tetangga {infoPerumahan.rtRw.split('/')[0]?.trim() || 'RT 38'},
                       </p>
 
                       <div className="relative">
                         {/* Stempel Digital Bulat RT */}
                         {infoPerumahan.stempelResmiAktif !== false && (
                           <div className="absolute -top-12 left-1/2 -translate-x-1/2 w-20 h-20 rounded-full border-2 border-indigo-600/40 text-indigo-800 text-[8px] font-bold flex items-center justify-center rotate-12 pointer-events-none bg-indigo-50/15">
-                            STEMPEL RT 04
+                            STEMPEL {infoPerumahan.rtRw.split('/')[0]?.trim() || 'RT 38'}
                           </div>
                         )}
 
@@ -1056,6 +1183,29 @@ export const LayananSuratRT: React.FC = () => {
       {/* Global Modals for KOP & Jenis Surat */}
       <EditKopRTModal isOpen={isKopModalOpen} onClose={() => setIsKopModalOpen(false)} />
       <JenisSuratManagerModal isOpen={isJenisSuratModalOpen} onClose={() => setIsJenisSuratModalOpen(false)} />
+
+      {/* Modal Simulasi Pengiriman Notifikasi WhatsApp ke Warga */}
+      <ModalSimulasiNotifikasi
+        isOpen={isSimulasiModalOpen}
+        onClose={() => setIsSimulasiModalOpen(false)}
+        notifikasi={activeSimulasiNotif}
+        onKirimUlang={() => {
+          if (activeSimulasiNotif) {
+            kirimNotifikasiSimulasi({
+              targetWargaNama: activeSimulasiNotif.targetWargaNama,
+              targetRumah: activeSimulasiNotif.targetRumah,
+              targetNoHp: activeSimulasiNotif.targetNoHp,
+              tipe: activeSimulasiNotif.tipe,
+              judul: activeSimulasiNotif.judul,
+              pesan: activeSimulasiNotif.pesan,
+              channel: 'WhatsApp Web Simulator',
+              meta: activeSimulasiNotif.meta,
+            });
+            setToastMessage(`✓ Berhasil mengirim ulang notifikasi simulasi ke ${activeSimulasiNotif.targetWargaNama}!`);
+            setTimeout(() => setToastMessage(null), 3000);
+          }
+        }}
+      />
     </div>
   );
 };

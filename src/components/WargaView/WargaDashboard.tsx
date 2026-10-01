@@ -118,7 +118,7 @@ export const WargaDashboard: React.FC<WargaDashboardProps> = ({
           <div className="flex items-center justify-between">
             <h3 className="font-extrabold text-sm text-slate-900 flex items-center gap-2">
               <Megaphone className="w-4 h-4 text-emerald-600" />
-              <span>Warta & Pengumuman Pengurus RT 04</span>
+              <span>Warta & Pengumuman Pengurus {infoPerumahan.rtRw}</span>
             </h3>
             <span className="text-xs text-slate-400">Pemberitahuan Warga</span>
           </div>

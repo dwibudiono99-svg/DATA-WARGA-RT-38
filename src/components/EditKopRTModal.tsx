@@ -85,7 +85,7 @@ export const EditKopRTModal: React.FC<EditKopRTModalProps> = ({ isOpen, onClose 
   };
 
   // Logo preset selection with regional options
-  const setPresetLogo = (type: 'garuda' | 'pemda_depok' | 'pemda_dki' | 'pemda_jabar' | 'kombinasi' | 'rt_custom') => {
+  const setPresetLogo = (type: 'garuda' | 'pemda_sidoarjo' | 'pemda_depok' | 'pemda_dki' | 'pemda_jabar' | 'kombinasi' | 'rt_custom') => {
     let logoKiri = formData.logoResmiKiri;
     let logoKanan = formData.logoResmiKanan;
     let tipeLogo: InfoPerumahan['tipeLogoResmi'] = 'garuda';
@@ -94,6 +94,10 @@ export const EditKopRTModal: React.FC<EditKopRTModalProps> = ({ isOpen, onClose 
       logoKiri = 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/87/Coat_of_arms_of_Indonesia.svg/300px-Coat_of_arms_of_Indonesia.svg.png';
       logoKanan = '';
       tipeLogo = 'garuda';
+    } else if (type === 'pemda_sidoarjo') {
+      logoKiri = 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1b/Lambang_Kabupaten_Sidoarjo.png/300px-Lambang_Kabupaten_Sidoarjo.png';
+      logoKanan = '';
+      tipeLogo = 'pemda';
     } else if (type === 'pemda_depok') {
       logoKiri = 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d2/Lambang_Kota_Depok.png/300px-Lambang_Kota_Depok.png';
       logoKanan = '';
@@ -108,7 +112,7 @@ export const EditKopRTModal: React.FC<EditKopRTModalProps> = ({ isOpen, onClose 
       tipeLogo = 'pemda';
     } else if (type === 'kombinasi') {
       logoKiri = 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/87/Coat_of_arms_of_Indonesia.svg/300px-Coat_of_arms_of_Indonesia.svg.png';
-      logoKanan = 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d2/Lambang_Kota_Depok.png/300px-Lambang_Kota_Depok.png';
+      logoKanan = 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1b/Lambang_Kabupaten_Sidoarjo.png/300px-Lambang_Kabupaten_Sidoarjo.png';
       tipeLogo = 'kombinasi';
     } else if (type === 'rt_custom') {
       tipeLogo = 'rt_custom';
@@ -370,7 +374,7 @@ export const EditKopRTModal: React.FC<EditKopRTModalProps> = ({ isOpen, onClose 
                     value={formData.headerBaris4 || formData.namaPerumahan.toUpperCase()}
                     onChange={(e) => handleChange('headerBaris4', e.target.value)}
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl font-semibold uppercase text-slate-900 focus:bg-white focus:outline-hidden focus:border-emerald-500"
-                    placeholder="Contoh: PERUMAHAN GRIYA TAMAN ASRI_CLUSTER SUNSIVIERA"
+                    placeholder="Contoh: PERUMAHAN GRIYO TAMAN ASRI"
                   />
                 </div>
               </div>
@@ -461,6 +465,26 @@ export const EditKopRTModal: React.FC<EditKopRTModalProps> = ({ isOpen, onClose 
 
                   <button
                     type="button"
+                    onClick={() => setPresetLogo('pemda_sidoarjo')}
+                    className={`p-2.5 rounded-2xl border text-center transition-all cursor-pointer ${
+                      formData.tipeLogoResmi === 'pemda' && formData.logoResmiKiri?.includes('Sidoarjo')
+                        ? 'border-emerald-500 bg-emerald-50/50 shadow-xs'
+                        : 'border-slate-200 hover:border-slate-300 bg-white'
+                    }`}
+                  >
+                    <div className="w-8 h-8 mx-auto mb-1.5 flex items-center justify-center">
+                      <img
+                        src="https://upload.wikimedia.org/wikipedia/commons/thumb/1/1b/Lambang_Kabupaten_Sidoarjo.png/150px-Lambang_Kabupaten_Sidoarjo.png"
+                        alt="Pemkab Sidoarjo"
+                        className="max-h-full object-contain"
+                      />
+                    </div>
+                    <span className="font-bold text-[11px] text-slate-900 block">Pemkab Sidoarjo</span>
+                    <span className="text-[9px] text-slate-500">Jawa Timur</span>
+                  </button>
+
+                  <button
+                    type="button"
                     onClick={() => setPresetLogo('pemda_depok')}
                     className={`p-2.5 rounded-2xl border text-center transition-all cursor-pointer ${
                       formData.tipeLogoResmi === 'pemda' && formData.logoResmiKiri?.includes('Depok')
@@ -476,7 +500,7 @@ export const EditKopRTModal: React.FC<EditKopRTModalProps> = ({ isOpen, onClose 
                       />
                     </div>
                     <span className="font-bold text-[11px] text-slate-900 block">Pemda Depok</span>
-                    <span className="text-[9px] text-slate-500">Jawa Timur</span>
+                    <span className="text-[9px] text-slate-500">Jawa Barat</span>
                   </button>
 
                   <button
