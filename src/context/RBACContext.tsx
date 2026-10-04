@@ -262,7 +262,16 @@ export const RBACProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [rolePermissions, setRolePermissions] = useState<RolePermissions>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEYS.PERMISSIONS);
-      return saved ? JSON.parse(saved) : DEFAULT_ROLE_PERMISSIONS;
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        // Ensure admin always retains core admin permissions like warga:delete
+        const mergedAdmin = Array.from(new Set([...(parsed.admin || []), 'warga:delete']));
+        return {
+          admin: mergedAdmin,
+          user: parsed.user || DEFAULT_ROLE_PERMISSIONS.user,
+        };
+      }
+      return DEFAULT_ROLE_PERMISSIONS;
     } catch {
       return DEFAULT_ROLE_PERMISSIONS;
     }

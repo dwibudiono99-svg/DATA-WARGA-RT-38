@@ -20,6 +20,7 @@ import {
   Lock,
   CheckCircle2,
   AlertCircle,
+  AlertTriangle,
   Clock,
   Printer,
   Sparkles,
@@ -68,6 +69,8 @@ export const DataWargaManagement: React.FC<DataWargaManagementProps> = ({ onOpen
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingWarga, setEditingWarga] = useState<WargaItem | null>(null);
   const [viewingCard, setViewingCard] = useState<WargaItem | null>(null);
+  const [deletingWarga, setDeletingWarga] = useState<WargaItem | null>(null);
+  const [deleteToastMessage, setDeleteToastMessage] = useState<string | null>(null);
 
   // Active Tab inside Add/Edit Modal
   const [formActiveTab, setFormActiveTab] = useState<'pokok' | 'identitas' | 'sipil' | 'anggota'>('pokok');
@@ -178,7 +181,7 @@ export const DataWargaManagement: React.FC<DataWargaManagementProps> = ({ onOpen
       noKitasKitap: '',
       namaAyah: '',
       namaIbu: '',
-      alamatKtp: `Perumahan Griya Asri Pratama Blok A No. 10, RT 04 / RW 09 Sukamaju Indah`,
+      alamatKtp: `${infoPerumahan.namaPerumahan} Blok AE No. 01, ${infoPerumahan.rtRw} Kel. ${infoPerumahan.kelurahan}`,
       noHp: '+62 81' + Math.floor(10000000 + Math.random() * 90000000),
       email: '',
       jumlahAnggotaKeluarga: 3,
@@ -317,14 +320,17 @@ export const DataWargaManagement: React.FC<DataWargaManagementProps> = ({ onOpen
 
   const handleDeleteClick = (warga: WargaItem) => {
     if (!canExecute('warga:delete', `Menghapus Warga: ${warga.namaLengkap}`, 'Data Warga')) return;
+    setDeletingWarga(warga);
+  };
 
-    if (
-      confirm(
-        `Apakah Anda yakin ingin menghapus data warga "${warga.namaLengkap}" (${warga.blokRumah}-${warga.nomorRumah}) karena pindah domisili?`
-      )
-    ) {
-      hapusWarga(warga.id);
-    }
+  const handleConfirmDelete = () => {
+    if (!deletingWarga) return;
+    const targetName = deletingWarga.namaLengkap;
+    const targetHouse = `${deletingWarga.blokRumah}-${deletingWarga.nomorRumah}`;
+    hapusWarga(deletingWarga.id);
+    setDeletingWarga(null);
+    setDeleteToastMessage(`✓ Data warga "${targetName}" (${targetHouse}) berhasil dihapus dari direktori kependudukan RT.`);
+    setTimeout(() => setDeleteToastMessage(null), 4000);
   };
 
   // Add anggota keluarga helper
@@ -399,6 +405,14 @@ export const DataWargaManagement: React.FC<DataWargaManagementProps> = ({ onOpen
 
   return (
     <div className="space-y-6">
+      {/* Toast Notification Alert */}
+      {deleteToastMessage && (
+        <div className="fixed bottom-6 right-6 z-50 bg-slate-900 text-white px-4 py-3 rounded-2xl shadow-xl border border-slate-700 text-xs font-bold flex items-center gap-2.5 animate-in slide-in-from-bottom-3">
+          <div className="w-2.5 h-2.5 rounded-full bg-rose-400 animate-ping" />
+          <span>{deleteToastMessage}</span>
+        </div>
+      )}
+
       {/* Header Banner */}
       <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
@@ -445,6 +459,30 @@ export const DataWargaManagement: React.FC<DataWargaManagementProps> = ({ onOpen
           </button>
         </div>
       </div>
+
+      {/* RBAC Authority Notice for Pengurus RT */}
+      {isAdmin && (
+        <div className="bg-gradient-to-r from-indigo-50 via-slate-50 to-rose-50/40 border border-indigo-200/80 rounded-2xl p-4 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 rounded-xl bg-indigo-600 text-white shadow-xs shrink-0">
+              <Shield className="w-4 h-4" />
+            </div>
+            <div className="space-y-0.5">
+              <div className="flex items-center gap-2">
+                <span className="font-extrabold text-slate-900">
+                  Otoritas RBAC Pengurus RT: Pengelolaan & Penghapusan Data Warga
+                </span>
+                <span className="px-2 py-0.2 rounded-full text-[9px] font-black uppercase bg-emerald-100 text-emerald-800 border border-emerald-300">
+                  warga:delete Aktif
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-600 leading-relaxed">
+                Pengurus RT berwenang penuh menambah, mengedit, memvalidasi KK, serta <strong>menghapus data warga</strong> (mutasi pindah domisili) melalui tombol hapus (<Trash2 className="w-3.5 h-3.5 inline text-rose-600 mx-0.5" />) di kolom aksi tabel, formulir edit, maupun salinan KK.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* KPI Cards: Verification Status & Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
@@ -1794,14 +1832,32 @@ export const DataWargaManagement: React.FC<DataWargaManagementProps> = ({ onOpen
               )}
 
               {/* Action Buttons */}
-              <div className="pt-3 border-t border-slate-200 flex items-center justify-between shrink-0">
-                <button
-                  type="button"
-                  onClick={() => setEditingWarga(null)}
-                  className="px-4 py-2 border border-slate-300 rounded-xl text-slate-700 font-bold text-xs hover:bg-slate-50 cursor-pointer"
-                >
-                  Batal
-                </button>
+              <div className="pt-3 border-t border-slate-200 flex flex-wrap items-center justify-between gap-2 shrink-0">
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setEditingWarga(null)}
+                    className="px-4 py-2 border border-slate-300 rounded-xl text-slate-700 font-bold text-xs hover:bg-slate-50 cursor-pointer"
+                  >
+                    Batal
+                  </button>
+
+                  {isAdmin && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const target = editingWarga;
+                        setEditingWarga(null);
+                        handleDeleteClick(target);
+                      }}
+                      className="px-3.5 py-2 text-rose-600 hover:text-rose-700 hover:bg-rose-50 border border-rose-200 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+                      title="Hapus data warga ini dari buku induk RT (mutasi keluar kompleks)"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>Hapus Data Warga (Pindah)</span>
+                    </button>
+                  )}
+                </div>
 
                 <button
                   type="submit"
@@ -2051,13 +2107,13 @@ export const DataWargaManagement: React.FC<DataWargaManagementProps> = ({ onOpen
                 <div className="space-y-16 relative">
                   <div>
                     <p>{infoPerumahan.kota}, {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
-                    <p className="font-bold">Ketua Rukun Tetangga (RT 04),</p>
+                    <p className="font-bold">Ketua Rukun Tetangga ({infoPerumahan.rtRw.split('/')[0]?.trim() || 'RT 38'}),</p>
                   </div>
 
                   <div className="relative">
                     {/* Official Stamp */}
                     <div className="absolute -top-12 left-1/2 -translate-x-1/2 w-20 h-20 rounded-full border-2 border-indigo-600/40 text-indigo-800 text-[8px] font-bold flex items-center justify-center rotate-12 pointer-events-none bg-indigo-50/20">
-                      STEMPEL RT 04
+                      STEMPEL {infoPerumahan.rtRw.split('/')[0]?.trim() || 'RT 38'}
                     </div>
                     <p className="font-bold underline">{infoPerumahan.namaKetuaRT}</p>
                     <p className="text-[10px] text-slate-500 font-mono">NIK: {infoPerumahan.nikKetuaRT || '3276011504780001'}</p>
@@ -2067,14 +2123,33 @@ export const DataWargaManagement: React.FC<DataWargaManagementProps> = ({ onOpen
             </div>
 
             {/* Modal Bottom Bar */}
-            <div className="print:hidden p-4 bg-slate-50 border-t border-slate-200 flex justify-end gap-2 shrink-0">
-              <button
-                type="button"
-                onClick={() => setViewingCard(null)}
-                className="px-4 py-2 border border-slate-300 rounded-xl text-slate-700 text-xs font-semibold hover:bg-white cursor-pointer"
-              >
-                Tutup
-              </button>
+            <div className="print:hidden p-4 bg-slate-50 border-t border-slate-200 flex flex-wrap items-center justify-between gap-2 shrink-0">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setViewingCard(null)}
+                  className="px-4 py-2 border border-slate-300 rounded-xl text-slate-700 text-xs font-semibold hover:bg-white cursor-pointer"
+                >
+                  Tutup
+                </button>
+
+                {isAdmin && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const target = viewingCard;
+                      setViewingCard(null);
+                      handleDeleteClick(target);
+                    }}
+                    className="px-3.5 py-2 text-rose-600 hover:text-rose-700 hover:bg-rose-50 border border-rose-200 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+                    title="Hapus data warga ini karena pindah domisili"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Hapus Warga Ini (Pindah)</span>
+                  </button>
+                )}
+              </div>
+
               <button
                 type="button"
                 onClick={() => window.print()}
@@ -2083,6 +2158,110 @@ export const DataWargaManagement: React.FC<DataWargaManagementProps> = ({ onOpen
                 <Printer className="w-4 h-4" />
                 <span>Cetak Salinan Kartu Keluarga</span>
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: KONFIRMASI PENGHAPUSAN DATA WARGA (RBAC PERMISSION warga:delete) */}
+      {deletingWarga && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-xs overflow-y-auto animate-in fade-in">
+          <div className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden text-slate-800 my-auto">
+            {/* Modal Header */}
+            <div className="px-6 py-4 bg-gradient-to-r from-rose-700 to-rose-900 text-white flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 bg-white/20 rounded-xl">
+                  <Trash2 className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-sm">
+                    Konfirmasi Hapus Data Warga
+                  </h3>
+                  <p className="text-[11px] text-rose-200">
+                    Otoritas RBAC Pengurus RT (Izin: warga:delete)
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setDeletingWarga(null)}
+                className="text-white/80 hover:text-white p-1 rounded-lg hover:bg-white/10"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4 text-xs">
+              {/* Resident Card to Delete */}
+              <div className="p-4 bg-rose-50/60 border border-rose-200 rounded-2xl space-y-2">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-rose-100 border border-rose-300 text-rose-800 flex items-center justify-center font-bold text-sm shrink-0">
+                    {deletingWarga.namaLengkap.charAt(0)}
+                  </div>
+                  <div>
+                    <h4 className="font-extrabold text-sm text-slate-900">
+                      {deletingWarga.namaLengkap}
+                    </h4>
+                    <p className="text-slate-500 font-mono text-[11px]">
+                      NIK: {deletingWarga.nik}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="pt-2 border-t border-rose-200/80 grid grid-cols-2 gap-2 text-[11px]">
+                  <div>
+                    <span className="text-slate-500 block">Alamat / Kavling:</span>
+                    <span className="font-bold text-slate-800">
+                      {deletingWarga.blokRumah} No. {deletingWarga.nomorRumah}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 block">Nomor KK:</span>
+                    <span className="font-bold font-mono text-slate-800">
+                      {deletingWarga.noKK}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 block">Status Hunian:</span>
+                    <span className="font-bold text-slate-800">
+                      {deletingWarga.statusHunian} ({deletingWarga.jumlahAnggotaKeluarga || 1} Jiwa)
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 block">Status Hubungan:</span>
+                    <span className="font-bold text-slate-800">
+                      {deletingWarga.statusKeluarga}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Warning Text */}
+              <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-2.5 text-amber-900">
+                <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                <p className="text-[11px] leading-relaxed">
+                  Data kependudukan ini akan dihapus dari buku induk warga RT karena alasan mutasi/pindah domisili. Tindakan ini tercatat di Log Audit Keamanan Sistem.
+                </p>
+              </div>
+
+              {/* Modal Buttons */}
+              <div className="pt-2 flex justify-end gap-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setDeletingWarga(null)}
+                  className="px-4 py-2 border border-slate-300 rounded-xl text-slate-700 font-bold hover:bg-slate-50 cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmDelete}
+                  className="px-5 py-2 bg-rose-600 hover:bg-rose-700 text-white font-extrabold rounded-xl shadow-md shadow-rose-600/20 flex items-center gap-1.5 transition-all cursor-pointer"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  <span>Ya, Hapus Data Warga</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>

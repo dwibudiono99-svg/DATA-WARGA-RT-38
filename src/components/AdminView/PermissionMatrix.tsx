@@ -392,7 +392,14 @@ export const PermissionMatrix: React.FC = () => {
                           }`}
                         >
                           <td className="px-6 py-3.5">
-                            <div className="font-extrabold text-slate-900 text-xs">{perm.name}</div>
+                            <div className="font-extrabold text-slate-900 text-xs flex items-center gap-1.5 flex-wrap">
+                              <span>{perm.name}</span>
+                              {perm.key === 'warga:delete' && (
+                                <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-rose-100 text-rose-800 border border-rose-300 shadow-2xs">
+                                  Menu Hapus Data Warga
+                                </span>
+                              )}
+                            </div>
                             <div className="text-[11px] text-slate-500 mt-0.5 leading-relaxed">
                               {perm.description}
                             </div>
