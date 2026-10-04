@@ -128,6 +128,21 @@ export interface AnggotaKeluargaKK {
   noKitasKitap?: string;
   namaAyah: string;
   namaIbu: string;
+  alamatKtp?: string;
+  alamatDomisili?: string;
+  statusDomisiliSamaDenganKK?: boolean;
+  statusTinggalDomisili?: 'Tinggal Bersama di RT' | 'Kuliah / Mahasiswa di Luar Kota' | 'Bekerja / Dinas Luar Daerah' | 'Kost / Sewa Lain' | 'Menumpang / Merantau' | 'Lainnya';
+  keteranganDomisili?: string;
+  noHpAnggota?: string;
+}
+
+export interface VerifikasiDukcapil {
+  status: 'Terverifikasi SIAK' | 'Sinkron Kemendagri' | 'Belum Terhubung';
+  tanggalVerifikasi?: string;
+  noRegistrasiSIAK?: string;
+  kodeWilayah?: string;
+  sumberData?: string;
+  catatanValidasi?: string;
 }
 
 export interface WargaItem {
@@ -155,6 +170,9 @@ export interface WargaItem {
   namaAyah?: string;
   namaIbu?: string;
   alamatKtp?: string;
+  alamatDomisili?: string;
+  statusDomisiliSamaDenganKk?: boolean;
+  verifikasiDukcapil?: VerifikasiDukcapil;
   noHp: string;
   email: string;
   jumlahAnggotaKeluarga: number;

@@ -200,15 +200,16 @@ export const Navbar: React.FC<NavbarProps> = ({
               </button>
             )}
 
-            {/* AI Scan KK Quick Action Button */}
+            {/* AI Scan 5 KK Simultan & Dukcapil Quick Action Button */}
             <button
               type="button"
               onClick={onOpenScanKK}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 text-white font-bold text-xs shadow-xs transition-all hover:scale-102 cursor-pointer"
-              title="Pindai / Scan Foto Kartu Keluarga dengan AI"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 via-teal-700 to-indigo-800 hover:from-emerald-500 hover:to-indigo-700 text-white font-bold text-xs shadow-xs transition-all hover:scale-102 cursor-pointer ring-1 ring-emerald-400/50"
+              title="Aplikasi Pindai 5 KK Simultan & Validasi Database SIAK Ditjen Dukcapil Kemendagri"
             >
               <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-spin" />
-              <span className="hidden sm:inline">Scan KK (AI)</span>
+              <span className="hidden sm:inline">⚡ Scan 5 KK Simultan</span>
+              <span className="sm:hidden">⚡ 5 KK</span>
             </button>
 
             {/* Notification Bell */}

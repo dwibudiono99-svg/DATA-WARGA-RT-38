@@ -10,6 +10,7 @@ import { RoleGuardBanner } from './components/RoleGuardBanner';
 import { AccessDeniedModal } from './components/AccessDeniedModal';
 import { AuthModal } from './components/AuthModal';
 import { ScanKKModal } from './components/ScanKKModal';
+import { FormPendataanModelKK } from './components/FormPendataanModelKK';
 import { WebHostingPosterModal } from './components/WebHostingPosterModal';
 
 // Admin / Pengurus RT Views
@@ -38,8 +39,16 @@ function AppContent() {
   const [currentTab, setCurrentTab] = useState<string>(isAdmin ? 'dashboard' : 'user-dashboard');
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isScanKKOpen, setIsScanKKOpen] = useState(false);
+  const [scanKKTab, setScanKKTab] = useState<'batch_5kk' | 'dukcapil_nik' | 'camera' | 'upload' | 'preset'>('batch_5kk');
+  const [isGlobalKKFormOpen, setIsGlobalKKFormOpen] = useState(false);
+  const [globalKKFormData, setGlobalKKFormData] = useState<any>(null);
   const [isPosterModalOpen, setIsPosterModalOpen] = useState(false);
   const [copiedFooter, setCopiedFooter] = useState(false);
+
+  const handleOpenScanKK = (tab: 'batch_5kk' | 'dukcapil_nik' | 'camera' | 'upload' | 'preset' = 'batch_5kk') => {
+    setScanKKTab(tab);
+    setIsScanKKOpen(true);
+  };
 
   const defaultHostingUrl =
     typeof window !== 'undefined'
@@ -87,7 +96,7 @@ function AppContent() {
         currentTab={currentTab}
         onTabChange={setCurrentTab}
         onOpenAuthModal={() => setIsAuthModalOpen(true)}
-        onOpenScanKK={() => setIsScanKKOpen(true)}
+        onOpenScanKK={() => handleOpenScanKK('batch_5kk')}
         onOpenWebHosting={() => setIsPosterModalOpen(true)}
       />
 
@@ -100,12 +109,12 @@ function AppContent() {
               <RTDashboard
                 onNavigateTab={setCurrentTab}
                 onOpenTambahWarga={() => setCurrentTab('warga')}
-                onOpenScanKK={() => setIsScanKKOpen(true)}
+                onOpenScanKK={() => handleOpenScanKK('batch_5kk')}
                 onOpenPrintPoster={() => setIsPosterModalOpen(true)}
               />
             )}
             {currentTab === 'warga' && (
-              <DataWargaManagement onOpenScanKK={() => setIsScanKKOpen(true)} />
+              <DataWargaManagement onOpenScanKK={(tab) => handleOpenScanKK(tab || 'batch_5kk')} />
             )}
             {currentTab === 'iuran' && <IuranManagement />}
             {currentTab === 'surat' && <LayananSuratRT />}
@@ -120,7 +129,7 @@ function AppContent() {
             {currentTab === 'user-dashboard' && (
               <WargaDashboard
                 onNavigateTab={setCurrentTab}
-                onOpenScanKK={() => setIsScanKKOpen(true)}
+                onOpenScanKK={() => handleOpenScanKK('batch_5kk')}
                 onOpenPrintPoster={() => setIsPosterModalOpen(true)}
               />
             )}
@@ -143,7 +152,27 @@ function AppContent() {
       <ScanKKModal
         isOpen={isScanKKOpen}
         onClose={() => setIsScanKKOpen(false)}
+        initialTab={scanKKTab}
         onSuccessRegistered={() => {
+          if (isAdmin) {
+            setCurrentTab('warga');
+          }
+        }}
+        onOpenFormModelKK={(extracted) => {
+          setIsScanKKOpen(false);
+          setGlobalKKFormData(extracted);
+          setIsGlobalKKFormOpen(true);
+        }}
+      />
+      <FormPendataanModelKK
+        isOpen={isGlobalKKFormOpen}
+        onClose={() => {
+          setIsGlobalKKFormOpen(false);
+          setGlobalKKFormData(null);
+        }}
+        initialData={globalKKFormData}
+        onOpenScanner={() => setIsScanKKOpen(true)}
+        onSuccessSaved={() => {
           if (isAdmin) {
             setCurrentTab('warga');
           }

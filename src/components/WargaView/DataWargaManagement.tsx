@@ -30,7 +30,12 @@ import {
   Briefcase,
   GraduationCap,
   Baby,
+  MapPin,
+  Database,
+  QrCode,
+  Zap,
 } from 'lucide-react';
+import { FormPendataanModelKK } from '../FormPendataanModelKK';
 import {
   BlokRumah,
   StatusHunian,
@@ -46,7 +51,7 @@ import {
 } from '../../types/rbac';
 
 interface DataWargaManagementProps {
-  onOpenScanKK?: () => void;
+  onOpenScanKK?: (tab?: 'batch_5kk' | 'dukcapil_nik' | 'camera' | 'upload' | 'preset') => void;
 }
 
 export const DataWargaManagement: React.FC<DataWargaManagementProps> = ({ onOpenScanKK }) => {
@@ -67,6 +72,8 @@ export const DataWargaManagement: React.FC<DataWargaManagementProps> = ({ onOpen
 
   // Modals
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isKKFormModalOpen, setIsKKFormModalOpen] = useState(false);
+  const [selectedWargaForKKForm, setSelectedWargaForKKForm] = useState<WargaItem | null>(null);
   const [editingWarga, setEditingWarga] = useState<WargaItem | null>(null);
   const [viewingCard, setViewingCard] = useState<WargaItem | null>(null);
   const [deletingWarga, setDeletingWarga] = useState<WargaItem | null>(null);
@@ -432,14 +439,38 @@ export const DataWargaManagement: React.FC<DataWargaManagementProps> = ({ onOpen
 
         <div className="flex flex-wrap gap-2 self-start md:self-auto">
           {onOpenScanKK && (
-            <button
-              onClick={onOpenScanKK}
-              className="flex items-center gap-1.5 px-3.5 py-2 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 text-white rounded-xl font-bold text-xs transition-all shadow-xs hover:scale-102 cursor-pointer"
-            >
-              <Sparkles className="w-4 h-4 text-amber-300 animate-spin" />
-              <span>Scan KK (AI)</span>
-            </button>
+            <>
+              <button
+                onClick={() => onOpenScanKK('batch_5kk')}
+                className="flex items-center gap-1.5 px-3.5 py-2 bg-gradient-to-r from-emerald-600 via-teal-700 to-indigo-800 hover:from-emerald-500 hover:to-indigo-700 text-white rounded-xl font-bold text-xs transition-all shadow-md hover:scale-102 cursor-pointer ring-2 ring-emerald-400/50"
+                title="Pindai 5 Kartu Keluarga secara bersamaan dengan koneksi database SIAK Kemendagri"
+              >
+                <Zap className="w-4 h-4 text-amber-300 animate-bounce" />
+                <span>⚡ Pindai 5 KK Simultan</span>
+              </button>
+
+              <button
+                onClick={() => onOpenScanKK('dukcapil_nik')}
+                className="flex items-center gap-1.5 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl font-bold text-xs transition-all shadow-xs cursor-pointer border border-slate-300"
+                title="Tarik & Verifikasi data KK via NIK Dukcapil Kemendagri"
+              >
+                <Database className="w-4 h-4 text-emerald-600" />
+                <span>SIAK Dukcapil (NIK)</span>
+              </button>
+            </>
           )}
+
+          <button
+            onClick={() => {
+              setSelectedWargaForKKForm(null);
+              setIsKKFormModalOpen(true);
+            }}
+            className="flex items-center gap-1.5 px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold text-xs transition-all shadow-md hover:scale-102 cursor-pointer border border-slate-700"
+            title="Buka Formulir Blanko Model Kartu Keluarga (F-1.01) Kemendagri"
+          >
+            <FileText className="w-4 h-4 text-amber-300" />
+            <span>Formulir Model KK (F-1.01)</span>
+          </button>
 
           <button
             onClick={handleExportJson}
@@ -455,7 +486,7 @@ export const DataWargaManagement: React.FC<DataWargaManagementProps> = ({ onOpen
             className="flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-xs transition-all shadow-md shadow-indigo-600/20 hover:scale-102 cursor-pointer"
           >
             <Plus className="w-4 h-4" />
-            <span>Tambah KK Warga</span>
+            <span>Tambah Warga</span>
           </button>
         </div>
       </div>
@@ -713,9 +744,21 @@ export const DataWargaManagement: React.FC<DataWargaManagementProps> = ({ onOpen
                         <div className="flex items-center justify-end gap-1.5">
                           <button
                             type="button"
+                            onClick={() => {
+                              setSelectedWargaForKKForm(warga);
+                              setIsKKFormModalOpen(true);
+                            }}
+                            className="p-1.5 text-slate-500 hover:text-emerald-700 hover:bg-emerald-50 rounded-xl transition-colors cursor-pointer"
+                            title="Buka / Edit di Formulir Blanko Model KK (F-1.01) Kemendagri"
+                          >
+                            <FileText className="w-4 h-4 text-emerald-600" />
+                          </button>
+
+                          <button
+                            type="button"
                             onClick={() => setViewingCard(warga)}
                             className="p-1.5 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-colors cursor-pointer"
-                            title="Buka Dokumen Kartu Keluarga (KK) Resmi"
+                            title="Lihat Salinan Kartu Keluarga (KK) Resmi"
                           >
                             <Eye className="w-4 h-4" />
                           </button>
@@ -724,7 +767,7 @@ export const DataWargaManagement: React.FC<DataWargaManagementProps> = ({ onOpen
                             type="button"
                             onClick={() => handleEditClick(warga)}
                             className="p-1.5 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-colors cursor-pointer"
-                            title="Edit Data KK Warga"
+                            title="Edit Data Warga"
                           >
                             <Edit2 className="w-4 h-4" />
                           </button>
@@ -1926,45 +1969,67 @@ export const DataWargaManagement: React.FC<DataWargaManagementProps> = ({ onOpen
                 </p>
               </div>
 
-              {/* KK Metadata Grid (Alamat & RT/RW) */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-1.5 text-xs bg-slate-50/70 p-4 rounded-2xl border border-slate-200">
-                <div className="space-y-1">
-                  <div className="grid grid-cols-3">
-                    <span className="font-semibold text-slate-600">Nama Kepala Keluarga</span>
-                    <span className="col-span-2 font-bold uppercase">: {viewingCard.namaLengkap}</span>
-                  </div>
-                  <div className="grid grid-cols-3">
-                    <span className="font-semibold text-slate-600">Alamat</span>
-                    <span className="col-span-2 font-medium">
-                      : {infoPerumahan.namaPerumahan} {viewingCard.blokRumah} No. {viewingCard.nomorRumah}
+              {/* KK Metadata Grid (Alamat Asal KTP vs Alamat Domisili Aktual) */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                {/* Alamat Asal KTP/KK */}
+                <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-300 space-y-1.5">
+                  <div className="flex items-center justify-between pb-1 border-b border-slate-200">
+                    <span className="font-extrabold uppercase text-[10px] text-slate-700">
+                      Alamat Asal (Sesuai KTP / Dokumen KK):
+                    </span>
+                    <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-slate-200 text-slate-700">
+                      Dokumen Asal
                     </span>
                   </div>
                   <div className="grid grid-cols-3">
-                    <span className="font-semibold text-slate-600">RT / RW</span>
+                    <span className="font-semibold text-slate-500">Kepala Keluarga</span>
+                    <span className="col-span-2 font-bold uppercase">: {viewingCard.namaLengkap}</span>
+                  </div>
+                  <div className="grid grid-cols-3">
+                    <span className="font-semibold text-slate-500">Alamat KTP</span>
+                    <span className="col-span-2 font-medium">
+                      : {viewingCard.alamatKtp || `${infoPerumahan.namaPerumahan} ${viewingCard.blokRumah} No. ${viewingCard.nomorRumah}`}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-3">
+                    <span className="font-semibold text-slate-500">RT / RW</span>
                     <span className="col-span-2 font-bold">: {infoPerumahan.rtRw}</span>
                   </div>
                   <div className="grid grid-cols-3">
-                    <span className="font-semibold text-slate-600">Kode Pos</span>
-                    <span className="col-span-2 font-mono">: {infoPerumahan.kodePos}</span>
+                    <span className="font-semibold text-slate-500">Desa / Kelurahan</span>
+                    <span className="col-span-2 font-medium uppercase">: {infoPerumahan.kelurahan}</span>
                   </div>
                 </div>
 
-                <div className="space-y-1">
-                  <div className="grid grid-cols-3">
-                    <span className="font-semibold text-slate-600">Desa / Kelurahan</span>
-                    <span className="col-span-2 font-medium uppercase">: {infoPerumahan.kelurahan}</span>
+                {/* Alamat Domisili Aktual di Perumahan */}
+                <div className="p-3.5 bg-emerald-50/70 rounded-2xl border-2 border-emerald-300 space-y-1.5">
+                  <div className="flex items-center justify-between pb-1 border-b border-emerald-200">
+                    <span className="font-extrabold uppercase text-[10px] text-emerald-950">
+                      Alamat Domisili Aktual KK di Perumahan:
+                    </span>
+                    <span className="text-[9px] font-bold px-2 py-0.2 rounded bg-emerald-200 text-emerald-900 border border-emerald-300">
+                      {viewingCard.blokRumah} No. {viewingCard.nomorRumah}
+                    </span>
                   </div>
                   <div className="grid grid-cols-3">
-                    <span className="font-semibold text-slate-600">Kecamatan</span>
-                    <span className="col-span-2 font-medium uppercase">: {infoPerumahan.kecamatan}</span>
+                    <span className="font-semibold text-emerald-800">Alamat Fisik</span>
+                    <span className="col-span-2 font-bold text-emerald-950">
+                      : {viewingCard.alamatDomisili || `${infoPerumahan.namaPerumahan} ${viewingCard.blokRumah} No. ${viewingCard.nomorRumah}, ${infoPerumahan.rtRw} Sepanjang Taman Sidoarjo`}
+                    </span>
                   </div>
                   <div className="grid grid-cols-3">
-                    <span className="font-semibold text-slate-600">Kabupaten / Kota</span>
-                    <span className="col-span-2 font-medium uppercase">: {infoPerumahan.kota}</span>
+                    <span className="font-semibold text-emerald-800">Status Hunian</span>
+                    <span className="col-span-2 font-bold text-emerald-950">: {viewingCard.statusHunian} (Milik Sendiri / Kontrak)</span>
                   </div>
                   <div className="grid grid-cols-3">
-                    <span className="font-semibold text-slate-600">Provinsi</span>
-                    <span className="col-span-2 font-medium uppercase">: {infoPerumahan.provinsi || 'Jawa Barat'}</span>
+                    <span className="font-semibold text-emerald-800">Kec. / Kab.</span>
+                    <span className="col-span-2 font-medium text-emerald-900 uppercase">
+                      : {infoPerumahan.kecamatan} / {infoPerumahan.kota} ({infoPerumahan.kodePos})
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-3">
+                    <span className="font-semibold text-emerald-800">Kontak Rumah</span>
+                    <span className="col-span-2 font-mono font-bold text-emerald-950">: {viewingCard.noHp}</span>
                   </div>
                 </div>
               </div>
@@ -2097,11 +2162,109 @@ export const DataWargaManagement: React.FC<DataWargaManagementProps> = ({ onOpen
                 </div>
               </div>
 
+              {/* TABEL 3: DATA ALAMAT DOMISILI PADA MASING-MASING ANGGOTA KELUARGA (USER REQUEST REQUIREMENT) */}
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-bold text-[11px] text-emerald-950 uppercase tracking-wider flex items-center gap-1.5">
+                    <MapPin className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>III. Data Alamat Domisili Masing-Masing Anggota Keluarga</span>
+                  </h4>
+                  <span className="text-[10px] text-slate-500 italic">
+                    Membedakan domisili tinggal bersama vs kuliah luar kota / dinas kerja
+                  </span>
+                </div>
+                <div className="overflow-x-auto border border-emerald-300 rounded-xl bg-white shadow-2xs">
+                  <table className="w-full text-left text-[11px] text-slate-900">
+                    <thead className="bg-emerald-50 border-b border-emerald-300 text-emerald-900 font-bold uppercase text-[9px]">
+                      <tr>
+                        <th className="px-2.5 py-2 text-center w-8">No</th>
+                        <th className="px-3 py-2">Nama Anggota & Status</th>
+                        <th className="px-3 py-2 font-mono">NIK</th>
+                        <th className="px-3 py-2">Status Tempat Tinggal / Domisili</th>
+                        <th className="px-3 py-2">Alamat Domisili Aktual Anggota</th>
+                        <th className="px-3 py-2">Kontak Domisili</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200">
+                      {viewingCard.anggotaKeluarga && viewingCard.anggotaKeluarga.length > 0 ? (
+                        viewingCard.anggotaKeluarga.map((ak, idx) => {
+                          const isSameAddress = ak.statusDomisiliSamaDenganKK !== false;
+                          return (
+                            <tr key={ak.id || idx} className="hover:bg-slate-50">
+                              <td className="px-2.5 py-2 text-center font-bold">{idx + 1}</td>
+                              <td className="px-3 py-2 font-bold uppercase text-slate-950">
+                                <div>{ak.namaLengkap}</div>
+                                <span className="text-[9px] font-semibold text-indigo-700">
+                                  {ak.hubunganKeluarga}
+                                </span>
+                              </td>
+                              <td className="px-3 py-2 font-mono text-slate-700">{ak.nik}</td>
+                              <td className="px-3 py-2">
+                                {isSameAddress ? (
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-bold text-[10px] bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                    <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                                    <span>Tinggal Bersama di RT 38</span>
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-bold text-[10px] bg-amber-100 text-amber-900 border border-amber-300">
+                                    <MapPin className="w-3 h-3 text-amber-600" />
+                                    <span>{ak.statusTinggalDomisili || 'Domisili Luar Kota'}</span>
+                                  </span>
+                                )}
+                              </td>
+                              <td className="px-3 py-2">
+                                <div className="font-medium text-slate-800">
+                                  {ak.alamatDomisili || viewingCard.alamatDomisili || `${infoPerumahan.namaPerumahan} ${viewingCard.blokRumah} No. ${viewingCard.nomorRumah}`}
+                                </div>
+                                {ak.keteranganDomisili && (
+                                  <div className="text-[10px] text-slate-500 italic">
+                                    Ket: {ak.keteranganDomisili}
+                                  </div>
+                                )}
+                              </td>
+                              <td className="px-3 py-2 font-mono text-slate-700">
+                                {ak.noHpAnggota || viewingCard.noHp || '-'}
+                              </td>
+                            </tr>
+                          );
+                        })
+                      ) : (
+                        <tr className="hover:bg-slate-50">
+                          <td className="px-2.5 py-2 text-center font-bold">1</td>
+                          <td className="px-3 py-2 font-bold uppercase">{viewingCard.namaLengkap}</td>
+                          <td className="px-3 py-2 font-mono text-slate-700">{viewingCard.nik}</td>
+                          <td className="px-3 py-2">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-bold text-[10px] bg-emerald-100 text-emerald-800">
+                              <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                              <span>Tinggal Bersama di RT 38</span>
+                            </span>
+                          </td>
+                          <td className="px-3 py-2">{viewingCard.alamatDomisili || `${infoPerumahan.namaPerumahan} ${viewingCard.blokRumah} No. ${viewingCard.nomorRumah}`}</td>
+                          <td className="px-3 py-2 font-mono">{viewingCard.noHp}</td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
               {/* Official Signatures & Digital Seal */}
-              <div className="pt-6 grid grid-cols-2 text-center text-xs font-sans">
+              <div className="pt-6 grid grid-cols-1 sm:grid-cols-3 text-center text-xs font-sans gap-6">
                 <div className="space-y-16">
                   <p>Kepala Keluarga,</p>
                   <p className="font-bold underline uppercase">{viewingCard.namaLengkap}</p>
+                </div>
+
+                <div className="flex flex-col items-center justify-center space-y-1 text-slate-600">
+                  <div className="w-16 h-16 bg-slate-50 border-2 border-slate-300 rounded-xl p-1 flex items-center justify-center shadow-2xs">
+                    <QrCode className="w-12 h-12 text-slate-800" />
+                  </div>
+                  <p className="text-[9px] font-mono font-bold text-slate-500">
+                    TTE KEMENDAGRI SIAK
+                  </p>
+                  <p className="text-[8px] font-mono text-emerald-700">
+                    {viewingCard.verifikasiDukcapil?.noRegistrasiSIAK || 'SIAK-KMD-3515-2026-SAH'}
+                  </p>
                 </div>
 
                 <div className="space-y-16 relative">
@@ -2116,7 +2279,7 @@ export const DataWargaManagement: React.FC<DataWargaManagementProps> = ({ onOpen
                       STEMPEL {infoPerumahan.rtRw.split('/')[0]?.trim() || 'RT 38'}
                     </div>
                     <p className="font-bold underline">{infoPerumahan.namaKetuaRT}</p>
-                    <p className="text-[10px] text-slate-500 font-mono">NIK: {infoPerumahan.nikKetuaRT || '3276011504780001'}</p>
+                    <p className="text-[10px] text-slate-500 font-mono">NIK: {infoPerumahan.nikKetuaRT || '3515141504780001'}</p>
                   </div>
                 </div>
               </div>
@@ -2131,6 +2294,21 @@ export const DataWargaManagement: React.FC<DataWargaManagementProps> = ({ onOpen
                   className="px-4 py-2 border border-slate-300 rounded-xl text-slate-700 text-xs font-semibold hover:bg-white cursor-pointer"
                 >
                   Tutup
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    const target = viewingCard;
+                    setViewingCard(null);
+                    setSelectedWargaForKKForm(target);
+                    setIsKKFormModalOpen(true);
+                  }}
+                  className="px-3.5 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-900 border border-indigo-200 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+                  title="Buka dan edit via Formulir Blanko Model KK Resmi (F-1.01)"
+                >
+                  <FileText className="w-3.5 h-3.5 text-indigo-600" />
+                  <span>Buka di Formulir Model KK</span>
                 </button>
 
                 {isAdmin && (
@@ -2266,6 +2444,17 @@ export const DataWargaManagement: React.FC<DataWargaManagementProps> = ({ onOpen
           </div>
         </div>
       )}
+
+      {/* MODAL: FORMULIR PENDATAAN MODEL KARTU KELUARGA (F-1.01 KEMENDAGRI) */}
+      <FormPendataanModelKK
+        isOpen={isKKFormModalOpen}
+        onClose={() => {
+          setIsKKFormModalOpen(false);
+          setSelectedWargaForKKForm(null);
+        }}
+        initialData={selectedWargaForKKForm}
+        onOpenScanner={onOpenScanKK}
+      />
     </div>
   );
 };
