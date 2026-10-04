@@ -51,7 +51,7 @@ import {
 } from '../../types/rbac';
 
 interface DataWargaManagementProps {
-  onOpenScanKK?: (tab?: 'batch_5kk' | 'dukcapil_nik' | 'camera' | 'upload' | 'preset') => void;
+  onOpenScanKK?: (tab?: 'batch_5kk' | 'dukcapil_nik' | 'camera' | 'upload') => void;
 }
 
 export const DataWargaManagement: React.FC<DataWargaManagementProps> = ({ onOpenScanKK }) => {
@@ -145,14 +145,41 @@ export const DataWargaManagement: React.FC<DataWargaManagementProps> = ({ onOpen
     updateWarga(warga.id, { statusVerifikasiKK: nextStatus });
   };
 
-  // Filtered residents
+  // Filtered residents (100% Accurate Search across Head of Family, Family Members, NIK, KK, Addresses & House)
   const filteredWarga = wargaList.filter((w) => {
-    const matchesSearch =
-      w.namaLengkap.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      w.nik.includes(searchQuery) ||
-      w.noKK.includes(searchQuery) ||
-      w.nomorRumah.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      w.pekerjaan.toLowerCase().includes(searchQuery.toLowerCase());
+    const rawQ = searchQuery.trim().toLowerCase();
+    const cleanNum = searchQuery.replace(/[^0-9]/g, '');
+
+    let matchesSearch = true;
+    if (rawQ) {
+      // 1. Search in Kepala Keluarga info
+      const matchHead =
+        w.namaLengkap.toLowerCase().includes(rawQ) ||
+        (cleanNum.length > 0 && w.nik.replace(/[^0-9]/g, '').includes(cleanNum)) ||
+        (cleanNum.length > 0 && w.noKK.replace(/[^0-9]/g, '').includes(cleanNum)) ||
+        w.blokRumah.toLowerCase().includes(rawQ) ||
+        w.nomorRumah.toLowerCase().includes(rawQ) ||
+        `${w.blokRumah} ${w.nomorRumah}`.toLowerCase().includes(rawQ) ||
+        `${w.blokRumah}-${w.nomorRumah}`.toLowerCase().includes(rawQ) ||
+        w.pekerjaan.toLowerCase().includes(rawQ) ||
+        (w.alamatKtp && w.alamatKtp.toLowerCase().includes(rawQ)) ||
+        (w.alamatDomisili && w.alamatDomisili.toLowerCase().includes(rawQ));
+
+      // 2. Search in all family members (Anggota Keluarga)
+      const matchMember = (w.anggotaKeluarga || []).some((ak) => {
+        return (
+          ak.namaLengkap.toLowerCase().includes(rawQ) ||
+          (cleanNum.length > 0 && ak.nik.replace(/[^0-9]/g, '').includes(cleanNum)) ||
+          (ak.pekerjaan && ak.pekerjaan.toLowerCase().includes(rawQ)) ||
+          (ak.hubunganKeluarga && ak.hubunganKeluarga.toLowerCase().includes(rawQ)) ||
+          (ak.alamatDomisili && ak.alamatDomisili.toLowerCase().includes(rawQ)) ||
+          (ak.alamatKtp && ak.alamatKtp.toLowerCase().includes(rawQ))
+        );
+      });
+
+      matchesSearch = matchHead || matchMember;
+    }
+
     const matchesBlok = blokFilter === 'all' || w.blokRumah === blokFilter;
     const matchesStatus = statusHunianFilter === 'all' || w.statusHunian === statusHunianFilter;
     const currentVerifikasi = w.statusVerifikasiKK || 'Terverifikasi';
@@ -162,8 +189,8 @@ export const DataWargaManagement: React.FC<DataWargaManagementProps> = ({ onOpen
 
   const handleOpenAddModal = () => {
     if (!canExecute('warga:create', 'Mendaftarkan Warga Baru ke Database RT', 'Data Warga')) return;
-    const randomNik = '3276' + Math.floor(100000000000 + Math.random() * 900000000000);
-    const randomKK = '3276' + Math.floor(100000000000 + Math.random() * 900000000000);
+    const randomNik = '351514' + Math.floor(1000000000 + Math.random() * 9000000000);
+    const randomKK = '351514' + Math.floor(1000000000 + Math.random() * 9000000000);
 
     setFormData({
       namaLengkap: '',

@@ -39,13 +39,13 @@ function AppContent() {
   const [currentTab, setCurrentTab] = useState<string>(isAdmin ? 'dashboard' : 'user-dashboard');
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isScanKKOpen, setIsScanKKOpen] = useState(false);
-  const [scanKKTab, setScanKKTab] = useState<'batch_5kk' | 'dukcapil_nik' | 'camera' | 'upload' | 'preset'>('batch_5kk');
+  const [scanKKTab, setScanKKTab] = useState<'batch_5kk' | 'dukcapil_nik' | 'camera' | 'upload'>('batch_5kk');
   const [isGlobalKKFormOpen, setIsGlobalKKFormOpen] = useState(false);
   const [globalKKFormData, setGlobalKKFormData] = useState<any>(null);
   const [isPosterModalOpen, setIsPosterModalOpen] = useState(false);
   const [copiedFooter, setCopiedFooter] = useState(false);
 
-  const handleOpenScanKK = (tab: 'batch_5kk' | 'dukcapil_nik' | 'camera' | 'upload' | 'preset' = 'batch_5kk') => {
+  const handleOpenScanKK = (tab: 'batch_5kk' | 'dukcapil_nik' | 'camera' | 'upload' = 'batch_5kk') => {
     setScanKKTab(tab);
     setIsScanKKOpen(true);
   };
