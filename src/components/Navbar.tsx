@@ -21,6 +21,7 @@ import {
   QrCode,
   ShieldCheck,
   FileSpreadsheet,
+  Crown,
 } from 'lucide-react';
 
 interface NavbarProps {
@@ -29,6 +30,7 @@ interface NavbarProps {
   onOpenAuthModal: () => void;
   onOpenScanKK: () => void;
   onOpenWebHosting?: () => void;
+  onOpenAdminDelegation?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -37,6 +39,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenAuthModal,
   onOpenScanKK,
   onOpenWebHosting,
+  onOpenAdminDelegation,
 }) => {
   const {
     currentUser,
@@ -197,6 +200,19 @@ export const Navbar: React.FC<NavbarProps> = ({
               >
                 <Globe className="w-3.5 h-3.5 text-indigo-600" />
                 <span className="hidden lg:inline">Alamat Web & QR</span>
+              </button>
+            )}
+
+            {/* Admin Delegation Quick Action */}
+            {onOpenAdminDelegation && (
+              <button
+                type="button"
+                onClick={onOpenAdminDelegation}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-950 border border-amber-300 font-bold text-xs shadow-2xs transition-all cursor-pointer"
+                title="Kelola & Tunjuk Warga Siapa Saja Menjadi Administrator / Pengurus RT"
+              >
+                <Crown className="w-3.5 h-3.5 text-amber-600" />
+                <span className="hidden xl:inline">Tunjuk Admin RT</span>
               </button>
             )}
 
@@ -434,6 +450,20 @@ export const Navbar: React.FC<NavbarProps> = ({
 
                   {/* Action items */}
                   <div className="p-1 space-y-0.5 text-xs">
+                    {onOpenAdminDelegation && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsUserMenuOpen(false);
+                          onOpenAdminDelegation();
+                        }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-amber-950 bg-amber-50 hover:bg-amber-100 transition-colors font-bold"
+                      >
+                        <Crown className="w-4 h-4 text-amber-600" />
+                        <span>👑 Tunjuk & Kelola Admin RT</span>
+                      </button>
+                    )}
+
                     <button
                       type="button"
                       onClick={() => {

@@ -34,8 +34,10 @@ import {
   Database,
   QrCode,
   Zap,
+  Crown,
 } from 'lucide-react';
 import { FormPendataanModelKK } from '../FormPendataanModelKK';
+import { AdminDelegationModal } from '../AdminDelegationModal';
 import {
   BlokRumah,
   StatusHunian,
@@ -63,6 +65,7 @@ export const DataWargaManagement: React.FC<DataWargaManagementProps> = ({ onOpen
     hapusWarga,
     canExecute,
     infoPerumahan,
+    isWargaAdmin,
   } = useRBAC();
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -73,6 +76,8 @@ export const DataWargaManagement: React.FC<DataWargaManagementProps> = ({ onOpen
   // Modals
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isKKFormModalOpen, setIsKKFormModalOpen] = useState(false);
+  const [isAdminDelegationOpen, setIsAdminDelegationOpen] = useState(false);
+  const [appointingWargaId, setAppointingWargaId] = useState<string | null>(null);
   const [selectedWargaForKKForm, setSelectedWargaForKKForm] = useState<WargaItem | null>(null);
   const [editingWarga, setEditingWarga] = useState<WargaItem | null>(null);
   const [viewingCard, setViewingCard] = useState<WargaItem | null>(null);
@@ -148,36 +153,71 @@ export const DataWargaManagement: React.FC<DataWargaManagementProps> = ({ onOpen
   // Filtered residents (100% Accurate Search across Head of Family, Family Members, NIK, KK, Addresses & House)
   const filteredWarga = wargaList.filter((w) => {
     const rawQ = searchQuery.trim().toLowerCase();
-    const cleanNum = searchQuery.replace(/[^0-9]/g, '');
 
     let matchesSearch = true;
     if (rawQ) {
-      // 1. Search in Kepala Keluarga info
-      const matchHead =
-        w.namaLengkap.toLowerCase().includes(rawQ) ||
-        (cleanNum.length > 0 && w.nik.replace(/[^0-9]/g, '').includes(cleanNum)) ||
-        (cleanNum.length > 0 && w.noKK.replace(/[^0-9]/g, '').includes(cleanNum)) ||
-        w.blokRumah.toLowerCase().includes(rawQ) ||
-        w.nomorRumah.toLowerCase().includes(rawQ) ||
-        `${w.blokRumah} ${w.nomorRumah}`.toLowerCase().includes(rawQ) ||
-        `${w.blokRumah}-${w.nomorRumah}`.toLowerCase().includes(rawQ) ||
-        w.pekerjaan.toLowerCase().includes(rawQ) ||
-        (w.alamatKtp && w.alamatKtp.toLowerCase().includes(rawQ)) ||
-        (w.alamatDomisili && w.alamatDomisili.toLowerCase().includes(rawQ));
+      // Split query into terms so multi-word searches (e.g. "Budi AE-01" or "Siti DB") work with 100% precision
+      const terms = rawQ.split(/\s+/).filter(Boolean);
 
-      // 2. Search in all family members (Anggota Keluarga)
-      const matchMember = (w.anggotaKeluarga || []).some((ak) => {
-        return (
-          ak.namaLengkap.toLowerCase().includes(rawQ) ||
-          (cleanNum.length > 0 && ak.nik.replace(/[^0-9]/g, '').includes(cleanNum)) ||
-          (ak.pekerjaan && ak.pekerjaan.toLowerCase().includes(rawQ)) ||
-          (ak.hubunganKeluarga && ak.hubunganKeluarga.toLowerCase().includes(rawQ)) ||
-          (ak.alamatDomisili && ak.alamatDomisili.toLowerCase().includes(rawQ)) ||
-          (ak.alamatKtp && ak.alamatKtp.toLowerCase().includes(rawQ))
-        );
+      // ALL search terms must match (AND condition)
+      matchesSearch = terms.every((term) => {
+        const isPureDigits = /^\d+$/.test(term);
+
+        // 1. Pure numbers handling
+        if (isPureDigits) {
+          // If 4 digits or more, treat as potential NIK / KK number or year
+          if (term.length >= 4) {
+            const matchNikKK =
+              w.nik.replace(/\D/g, '').includes(term) ||
+              w.noKK.replace(/\D/g, '').includes(term) ||
+              (w.anggotaKeluarga || []).some((ak) => ak.nik.replace(/\D/g, '').includes(term));
+            const matchHouse =
+              w.nomorRumah.toLowerCase().includes(term) ||
+              w.blokRumah.toLowerCase().includes(term);
+            return matchNikKK || matchHouse;
+          } else {
+            // Short numbers (1-3 digits like "1", "01", "10", "12"):
+            // Match against house number or block number ONLY, not a 16-digit NIK containing that digit
+            const cleanHouse = w.nomorRumah.replace(/\D/g, '');
+            const matchHouse =
+              w.nomorRumah.toLowerCase().includes(term) ||
+              cleanHouse === term ||
+              cleanHouse.endsWith(term) ||
+              w.blokRumah.toLowerCase().includes(term);
+            return matchHouse;
+          }
+        }
+
+        // 2. Alphanumeric / Word handling (e.g. "ae-01", "budi", "dosen", "tetap")
+        const termClean = term.replace(/[\s\-_]/g, '');
+
+        // Match Head of Family fields
+        const matchHead =
+          w.namaLengkap.toLowerCase().includes(term) ||
+          w.blokRumah.toLowerCase().includes(term) ||
+          w.nomorRumah.toLowerCase().includes(term) ||
+          `${w.blokRumah} ${w.nomorRumah}`.toLowerCase().includes(term) ||
+          `${w.blokRumah}-${w.nomorRumah}`.toLowerCase().includes(term) ||
+          `${w.blokRumah}${w.nomorRumah}`.toLowerCase().replace(/[\s\-_]/g, '').includes(termClean) ||
+          w.pekerjaan.toLowerCase().includes(term) ||
+          w.statusHunian.toLowerCase().includes(term) ||
+          w.statusKeluarga.toLowerCase().includes(term) ||
+          (w.alamatKtp && w.alamatKtp.toLowerCase().includes(term)) ||
+          (w.alamatDomisili && w.alamatDomisili.toLowerCase().includes(term));
+
+        // Match Family Members
+        const matchMember = (w.anggotaKeluarga || []).some((ak) => {
+          return (
+            ak.namaLengkap.toLowerCase().includes(term) ||
+            (ak.pekerjaan && ak.pekerjaan.toLowerCase().includes(term)) ||
+            (ak.hubunganKeluarga && ak.hubunganKeluarga.toLowerCase().includes(term)) ||
+            (ak.alamatDomisili && ak.alamatDomisili.toLowerCase().includes(term)) ||
+            (ak.alamatKtp && ak.alamatKtp.toLowerCase().includes(term))
+          );
+        });
+
+        return matchHead || matchMember;
       });
-
-      matchesSearch = matchHead || matchMember;
     }
 
     const matchesBlok = blokFilter === 'all' || w.blokRumah === blokFilter;
@@ -500,6 +540,18 @@ export const DataWargaManagement: React.FC<DataWargaManagementProps> = ({ onOpen
           </button>
 
           <button
+            onClick={() => {
+              setAppointingWargaId(null);
+              setIsAdminDelegationOpen(true);
+            }}
+            className="flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-black rounded-xl text-xs transition-all shadow-md shadow-amber-500/20 hover:scale-102 cursor-pointer border border-amber-400"
+            title="Kelola hak akses dan tunjuk siapa saja warga menjadi Administrator / Pengurus RT"
+          >
+            <Crown className="w-4 h-4 text-slate-950" />
+            <span>👑 Penunjukan Admin RT</span>
+          </button>
+
+          <button
             onClick={handleExportJson}
             className="flex items-center gap-1.5 px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold text-xs transition-colors cursor-pointer"
             title="Ekspor seluruh data warga ke format JSON"
@@ -520,7 +572,7 @@ export const DataWargaManagement: React.FC<DataWargaManagementProps> = ({ onOpen
 
       {/* RBAC Authority Notice for Pengurus RT */}
       {isAdmin && (
-        <div className="bg-gradient-to-r from-indigo-50 via-slate-50 to-rose-50/40 border border-indigo-200/80 rounded-2xl p-4 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+        <div className="bg-gradient-to-r from-indigo-50 via-slate-50 to-amber-50/50 border border-indigo-200/80 rounded-2xl p-4 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
           <div className="flex items-center gap-2.5">
             <div className="p-2 rounded-xl bg-indigo-600 text-white shadow-xs shrink-0">
               <Shield className="w-4 h-4" />
@@ -528,17 +580,28 @@ export const DataWargaManagement: React.FC<DataWargaManagementProps> = ({ onOpen
             <div className="space-y-0.5">
               <div className="flex items-center gap-2">
                 <span className="font-extrabold text-slate-900">
-                  Otoritas RBAC Pengurus RT: Pengelolaan & Penghapusan Data Warga
+                  Otoritas RBAC Pengurus RT: Pengelolaan, Penunjukan Admin & Mutasi Warga
                 </span>
                 <span className="px-2 py-0.2 rounded-full text-[9px] font-black uppercase bg-emerald-100 text-emerald-800 border border-emerald-300">
-                  warga:delete Aktif
+                  Akses Admin Fleksibel
                 </span>
               </div>
               <p className="text-[11px] text-slate-600 leading-relaxed">
-                Pengurus RT berwenang penuh menambah, mengedit, memvalidasi KK, serta <strong>menghapus data warga</strong> (mutasi pindah domisili) melalui tombol hapus (<Trash2 className="w-3.5 h-3.5 inline text-rose-600 mx-0.5" />) di kolom aksi tabel, formulir edit, maupun salinan KK.
+                Pengurus RT berwenang penuh mengelola data warga, memvalidasi dokumen, serta <strong>menunjuk warga siapa saja menjadi Administrator RT</strong> (Ketua, Wakil, Sekretaris, Bendahara, Seksi, atau Admin Pendamping).
               </p>
             </div>
           </div>
+          <button
+            type="button"
+            onClick={() => {
+              setAppointingWargaId(null);
+              setIsAdminDelegationOpen(true);
+            }}
+            className="px-3.5 py-2 bg-amber-400 hover:bg-amber-500 text-slate-950 font-extrabold rounded-xl text-xs flex items-center gap-1.5 shrink-0 shadow-xs cursor-pointer transition-colors"
+          >
+            <Crown className="w-3.5 h-3.5" />
+            <span>Tunjuk Warga Jadi Admin</span>
+          </button>
         </div>
       )}
 
@@ -659,6 +722,7 @@ export const DataWargaManagement: React.FC<DataWargaManagementProps> = ({ onOpen
                   const isOwner =
                     warga.nomorRumah === currentUser.nomorRumah && warga.blokRumah === currentUser.blokRumah;
                   const isVerified = (warga.statusVerifikasiKK || 'Terverifikasi') === 'Terverifikasi';
+                  const adminInfo = isWargaAdmin(warga);
 
                   return (
                     <tr key={warga.id} className="hover:bg-slate-50/80 transition-colors">
@@ -669,8 +733,17 @@ export const DataWargaManagement: React.FC<DataWargaManagementProps> = ({ onOpen
                             {warga.namaLengkap.charAt(0)}
                           </div>
                           <div>
-                            <div className="font-bold text-slate-900 flex items-center gap-1.5">
+                            <div className="font-bold text-slate-900 flex items-center gap-1.5 flex-wrap">
                               <span>{warga.namaLengkap}</span>
+                              {adminInfo.isAdmin && (
+                                <span
+                                  className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300 text-[9px] font-black uppercase flex items-center gap-1 shadow-2xs"
+                                  title={`Warga ini memegang hak akses Admin sebagai "${adminInfo.roleTitle}"`}
+                                >
+                                  <Crown className="w-2.5 h-2.5 text-amber-600" />
+                                  <span>{adminInfo.roleTitle || 'Admin RT'}</span>
+                                </span>
+                              )}
                               {isOwner && (
                                 <span className="px-1.5 py-0.2 rounded bg-indigo-100 text-indigo-700 text-[9px] font-black uppercase">
                                   Saya
@@ -769,6 +842,28 @@ export const DataWargaManagement: React.FC<DataWargaManagementProps> = ({ onOpen
                       {/* Actions */}
                       <td className="px-6 py-4 text-right">
                         <div className="flex items-center justify-end gap-1.5">
+                          {isAdmin && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setAppointingWargaId(warga.id);
+                                setIsAdminDelegationOpen(true);
+                              }}
+                              className={`p-1.5 rounded-xl transition-colors cursor-pointer ${
+                                adminInfo.isAdmin
+                                  ? 'text-amber-800 bg-amber-100 hover:bg-amber-200 ring-1 ring-amber-300'
+                                  : 'text-slate-400 hover:text-amber-600 hover:bg-amber-50'
+                              }`}
+                              title={
+                                adminInfo.isAdmin
+                                  ? `Kelola / Ubah Jabatan Admin (${adminInfo.roleTitle})`
+                                  : `Tunjuk ${warga.namaLengkap} Menjadi Admin RT`
+                              }
+                            >
+                              <Crown className="w-4 h-4 text-amber-500" />
+                            </button>
+                          )}
+
                           <button
                             type="button"
                             onClick={() => {
@@ -2481,6 +2576,16 @@ export const DataWargaManagement: React.FC<DataWargaManagementProps> = ({ onOpen
         }}
         initialData={selectedWargaForKKForm}
         onOpenScanner={onOpenScanKK}
+      />
+
+      {/* MODAL: PENUNJUKAN & PENGELOLAAN HAK AKSES ADMIN RT */}
+      <AdminDelegationModal
+        isOpen={isAdminDelegationOpen}
+        onClose={() => {
+          setIsAdminDelegationOpen(false);
+          setAppointingWargaId(null);
+        }}
+        preSelectedWargaId={appointingWargaId}
       />
     </div>
   );

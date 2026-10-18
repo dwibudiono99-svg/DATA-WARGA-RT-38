@@ -66,6 +66,10 @@ interface RBACContextType {
   switchRolePersona: (role: Role) => void;
   logout: () => void;
   registerWargaUser: (nama: string, email: string, blok: WargaItem['blokRumah'], nomor: string, role: Role) => User;
+  tunjukWargaSebagaiAdmin: (wargaIdOrName: string, roleTitle?: string) => boolean;
+  cabutHakAksesAdmin: (userIdOrWargaName: string) => boolean;
+  ubahJabatanAdmin: (userId: string, newRoleTitle: string) => boolean;
+  isWargaAdmin: (warga: WargaItem) => { isAdmin: boolean; roleTitle?: string; user?: User };
 
   // Kop & Info Perumahan Management
   updateInfoPerumahan: (newInfo: Partial<InfoPerumahan>) => boolean;
@@ -507,6 +511,166 @@ export const RBACProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return newUser;
   };
 
+  // Admin Delegation & Appointment Management (Hak Akses Admin Bisa Ditunjuk ke Siapa Saja)
+  const tunjukWargaSebagaiAdmin = (wargaIdOrName: string, roleTitle: string = 'Pengurus RT 38 / Admin Kompleks'): boolean => {
+    // Cari data warga
+    const warga = wargaList.find(
+      (w) =>
+        w.id === wargaIdOrName ||
+        w.namaLengkap.toLowerCase().trim() === wargaIdOrName.toLowerCase().trim()
+    );
+
+    // Cari user yang bersangkutan jika sudah punya akun
+    const existingUser = users.find(
+      (u) =>
+        u.id === wargaIdOrName ||
+        (warga && u.name.toLowerCase().trim() === warga.namaLengkap.toLowerCase().trim()) ||
+        (warga && u.blokRumah === warga.blokRumah && u.nomorRumah === warga.nomorRumah && u.name === warga.namaLengkap)
+    );
+
+    if (existingUser) {
+      const updatedUsers = users.map((u) =>
+        u.id === existingUser.id
+          ? {
+              ...u,
+              role: 'admin' as Role,
+              roleTitle,
+              status: 'active' as const,
+            }
+          : u
+      );
+      setUsers(updatedUsers);
+      notifyRealtimeSync({ users: updatedUsers });
+      logAudit(
+        'APPOINT_ADMIN',
+        'Manajemen Pengurus RT',
+        'success',
+        `Hak akses Admin berhasil diberikan kepada ${existingUser.name} (${existingUser.blokRumah}-${existingUser.nomorRumah}) sebagai "${roleTitle}".`
+      );
+      return true;
+    }
+
+    if (warga) {
+      const newAdminUser: User = {
+        id: `usr_adm_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+        name: warga.namaLengkap,
+        email: `${warga.namaLengkap.toLowerCase().replace(/[^a-z0-9]/g, '.')}@rt38.sidoarjo.id`,
+        role: 'admin',
+        roleTitle,
+        status: 'active',
+        blokRumah: warga.blokRumah,
+        nomorRumah: warga.nomorRumah,
+        avatar:
+          warga.jenisKelamin === 'Perempuan'
+            ? 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80'
+            : 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
+        phone: warga.noHp,
+        createdAt: new Date().toISOString(),
+        lastLogin: new Date().toISOString(),
+      };
+
+      const updatedUsers = [...users, newAdminUser];
+      setUsers(updatedUsers);
+      notifyRealtimeSync({ users: updatedUsers });
+      logAudit(
+        'APPOINT_ADMIN',
+        'Manajemen Pengurus RT',
+        'success',
+        `Warga ${warga.namaLengkap} (${warga.blokRumah}-${warga.nomorRumah}) resmi ditunjuk menjadi Admin RT dengan jabatan "${roleTitle}".`
+      );
+      return true;
+    }
+
+    return false;
+  };
+
+  const cabutHakAksesAdmin = (userIdOrWargaName: string): boolean => {
+    const adminCount = users.filter((u) => u.role === 'admin').length;
+    if (adminCount <= 1) {
+      alert('Peringatan: Tidak dapat mencabut hak akses Admin terakhir. Harus ada minimal satu Administrator / Pengurus RT yang aktif.');
+      return false;
+    }
+
+    const targetUser = users.find(
+      (u) =>
+        u.id === userIdOrWargaName ||
+        u.name.toLowerCase().trim() === userIdOrWargaName.toLowerCase().trim()
+    );
+
+    if (!targetUser) return false;
+
+    const updatedUsers = users.map((u) =>
+      u.id === targetUser.id
+        ? {
+            ...u,
+            role: 'user' as Role,
+            roleTitle: `Warga Penghuni ${u.blokRumah}-${u.nomorRumah}`,
+          }
+        : u
+    );
+
+    setUsers(updatedUsers);
+    notifyRealtimeSync({ users: updatedUsers });
+
+    if (currentUserId === targetUser.id) {
+      const anotherAdmin = updatedUsers.find((u) => u.role === 'admin');
+      if (anotherAdmin) {
+        setCurrentUserId(anotherAdmin.id);
+      }
+    }
+
+    logAudit(
+      'REVOKE_ADMIN',
+      'Manajemen Pengurus RT',
+      'success',
+      `Hak akses Admin untuk ${targetUser.name} telah dicabut. Status dikembalikan menjadi Warga Penghuni.`
+    );
+    return true;
+  };
+
+  const ubahJabatanAdmin = (userId: string, newRoleTitle: string): boolean => {
+    const targetUser = users.find((u) => u.id === userId);
+    if (!targetUser) return false;
+
+    const updatedUsers = users.map((u) =>
+      u.id === userId
+        ? {
+            ...u,
+            role: 'admin' as Role,
+            roleTitle: newRoleTitle,
+          }
+        : u
+    );
+
+    setUsers(updatedUsers);
+    notifyRealtimeSync({ users: updatedUsers });
+    logAudit(
+      'UPDATE_ADMIN_TITLE',
+      'Manajemen Pengurus RT',
+      'success',
+      `Jabatan pengurus untuk ${targetUser.name} diubah menjadi "${newRoleTitle}".`
+    );
+    return true;
+  };
+
+  const isWargaAdmin = (warga: WargaItem): { isAdmin: boolean; roleTitle?: string; user?: User } => {
+    const matchedUser = users.find(
+      (u) =>
+        u.name.toLowerCase().trim() === warga.namaLengkap.toLowerCase().trim() ||
+        (u.blokRumah === warga.blokRumah && u.nomorRumah === warga.nomorRumah && u.name.split(' ')[0] === warga.namaLengkap.split(' ')[0])
+    );
+
+    if (matchedUser && matchedUser.role === 'admin') {
+      return {
+        isAdmin: true,
+        roleTitle: matchedUser.roleTitle,
+        user: matchedUser,
+      };
+    }
+
+    return { isAdmin: false };
+  };
+
   // Kop & Info Perumahan Management
   const updateInfoPerumahan = (newInfo: Partial<InfoPerumahan>): boolean => {
     if (!canExecute('kop:manage', 'Mengubah Pengaturan & KOP Resmi RT', 'Layanan Surat RT')) return false;
@@ -525,7 +689,7 @@ export const RBACProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const newWarga: WargaItem = {
       ...data,
-      id: `wrg_${Date.now()}`,
+      id: `wrg_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
     };
 
     setWargaList((prev) => [newWarga, ...prev]);
@@ -604,7 +768,7 @@ export const RBACProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const tambahIuranBaru = (data: Omit<IuranItem, 'id'>) => {
     const newIuran: IuranItem = {
       ...data,
-      id: `iur_${Date.now()}`,
+      id: `iur_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
     };
     setIuranList((prev) => [newIuran, ...prev]);
   };
@@ -620,7 +784,7 @@ export const RBACProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!canExecute('surat:request', 'Mengajukan Surat Pengantar RT Online', 'Layanan Surat RT')) return;
 
     const newSurat: SuratItem = {
-      id: `srt_${Date.now()}`,
+      id: `srt_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
       wargaId: currentUser.id,
       namaPemohon: currentUser.name,
       nikPemohon: '327601' + Math.floor(1000000000 + Math.random() * 9000000000),
@@ -1256,6 +1420,10 @@ export const RBACProvider: React.FC<{ children: React.ReactNode }> = ({ children
         switchRolePersona,
         logout,
         registerWargaUser,
+        tunjukWargaSebagaiAdmin,
+        cabutHakAksesAdmin,
+        ubahJabatanAdmin,
+        isWargaAdmin,
         updateInfoPerumahan,
         tambahWarga,
         updateWarga,

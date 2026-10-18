@@ -21,10 +21,12 @@ import {
   FileUp,
 } from 'lucide-react';
 import { BlokRumah, StatusHunian } from '../types/rbac';
+import { SAMPLE_KK_DOCUMENTS, renderKKDocumentToDataUrl } from '../utils/kkDocumentGenerator';
 
 export interface ExtractedKKData {
   nomorKK: string;
   namaKepalaKeluarga: string;
+  nikKepalaKeluarga?: string;
   alamat?: string;
   alamatKtp?: string;
   alamatDomisili?: string;
@@ -71,13 +73,62 @@ export interface BatchSlotItem {
   fileName?: string | null;
   imagePreview?: string | null;
   imageBase64?: string | null;
+  mimeType?: string | null;
   status: 'empty' | 'ready' | 'scanning' | 'done' | 'error';
   progress: number;
   stepMessage: string;
   result?: ExtractedKKData | null;
   isSaved?: boolean;
   error?: string | null;
+  targetBlok?: BlokRumah;
+  targetNomor?: string;
 }
+
+/**
+ * Downscale and optimize document image to max 1600px width/height.
+ * Ensures text lines remain crisp for OCR while keeping JSON payload under 300KB
+ * to prevent network timeouts, 413 Payload Too Large, and browser freezing.
+ */
+const optimizeImageForOCR = (dataUrl: string, maxDimension = 1600): Promise<string> => {
+  return new Promise((resolve) => {
+    if (!dataUrl || !dataUrl.startsWith('data:image')) {
+      resolve(dataUrl);
+      return;
+    }
+    const img = new Image();
+    img.onload = () => {
+      let width = img.width;
+      let height = img.height;
+      if (width <= maxDimension && height <= maxDimension && dataUrl.length < 500000) {
+        resolve(dataUrl);
+        return;
+      }
+      if (width > maxDimension || height > maxDimension) {
+        if (width > height) {
+          height = Math.round((height * maxDimension) / width);
+          width = maxDimension;
+        } else {
+          width = Math.round((width * maxDimension) / height);
+          height = maxDimension;
+        }
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, width, height);
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', 0.88));
+      } else {
+        resolve(dataUrl);
+      }
+    };
+    img.onerror = () => resolve(dataUrl);
+    img.src = dataUrl;
+  });
+};
 
 interface ScanKKModalProps {
   isOpen: boolean;
@@ -116,6 +167,8 @@ export const ScanKKModal: React.FC<ScanKKModalProps> = ({
       stepMessage: 'Menunggu berkas foto KK',
       result: null,
       isSaved: false,
+      targetBlok: 'Blok AE',
+      targetNomor: 'AE-01',
     },
     {
       id: 'slot_2',
@@ -126,6 +179,8 @@ export const ScanKKModal: React.FC<ScanKKModalProps> = ({
       stepMessage: 'Menunggu berkas foto KK',
       result: null,
       isSaved: false,
+      targetBlok: 'Blok AE',
+      targetNomor: 'AE-02',
     },
     {
       id: 'slot_3',
@@ -136,6 +191,8 @@ export const ScanKKModal: React.FC<ScanKKModalProps> = ({
       stepMessage: 'Menunggu berkas foto KK',
       result: null,
       isSaved: false,
+      targetBlok: 'Blok AE',
+      targetNomor: 'AE-03',
     },
     {
       id: 'slot_4',
@@ -146,6 +203,8 @@ export const ScanKKModal: React.FC<ScanKKModalProps> = ({
       stepMessage: 'Menunggu berkas foto KK',
       result: null,
       isSaved: false,
+      targetBlok: 'Blok DB',
+      targetNomor: 'DB-01',
     },
     {
       id: 'slot_5',
@@ -156,6 +215,8 @@ export const ScanKKModal: React.FC<ScanKKModalProps> = ({
       stepMessage: 'Menunggu berkas foto KK',
       result: null,
       isSaved: false,
+      targetBlok: 'Blok DC',
+      targetNomor: 'DC-01',
     },
   ];
 
@@ -186,6 +247,7 @@ export const ScanKKModal: React.FC<ScanKKModalProps> = ({
   const singleFileInputRef = useRef<HTMLInputElement | null>(null);
   const multiFileInputRef = useRef<HTMLInputElement | null>(null);
   const slotFileInputRef = useRef<HTMLInputElement | null>(null);
+  const slotCameraInputRef = useRef<HTMLInputElement | null>(null);
   const [activeSlotForUpload, setActiveSlotForUpload] = useState<number>(0);
 
   const [isCameraActive, setIsCameraActive] = useState(false);
@@ -218,6 +280,9 @@ export const ScanKKModal: React.FC<ScanKKModalProps> = ({
     if (!isOpen || activeTab !== 'camera') {
       stopCamera();
     }
+    return () => {
+      stopCamera();
+    };
   }, [isOpen, activeTab, stopCamera]);
 
   const startCamera = async (targetDeviceId?: string) => {
@@ -310,66 +375,181 @@ export const ScanKKModal: React.FC<ScanKKModalProps> = ({
   };
 
   // MULTI-FILE UPLOAD (Up to 5 Real Files)
-  const handleBatchMultiFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleBatchMultiFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
     setBatchError(null);
-    const count = Math.min(files.length, 5);
-    const updated = [...batchSlots];
+    const fileList = Array.from(files).slice(0, 5);
 
-    Array.from(files).slice(0, count).forEach((file, index) => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        const base64 = reader.result as string;
+    for (let index = 0; index < fileList.length; index++) {
+      const file = fileList[index];
+      try {
+        const rawBase64 = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+
+        const optimizedBase64 = await optimizeImageForOCR(rawBase64);
+
         setBatchSlots((prev) => {
           const nextSlots = [...prev];
-          nextSlots[index] = {
-            ...nextSlots[index],
-            fileName: file.name,
-            imagePreview: base64,
-            imageBase64: base64,
-            status: 'ready',
-            stepMessage: `Berkas ${file.name} siap dipindai`,
-            result: null,
-            error: null,
-          };
+          if (nextSlots[index]) {
+            nextSlots[index] = {
+              ...nextSlots[index],
+              fileName: file.name,
+              imagePreview: optimizedBase64,
+              imageBase64: optimizedBase64,
+              mimeType: 'image/jpeg',
+              status: 'ready',
+              stepMessage: `Berkas ${file.name} siap dipindai`,
+              result: null,
+              error: null,
+              isSaved: false,
+            };
+          }
           return nextSlots;
         });
-      };
-      reader.readAsDataURL(file);
-    });
+      } catch (err: any) {
+        console.error('Gagal membaca file slot:', err);
+      }
+    }
 
-    // Reset input
     e.target.value = '';
   };
 
   // INDIVIDUAL SLOT FILE UPLOAD
-  const handleSlotSpecificUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleSlotSpecificUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     setBatchError(null);
-    const reader = new FileReader();
-    reader.onload = () => {
-      const base64 = reader.result as string;
+    try {
+      const rawBase64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+
+      const optimizedBase64 = await optimizeImageForOCR(rawBase64);
+
       setBatchSlots((prev) => {
         const nextSlots = [...prev];
-        nextSlots[activeSlotForUpload] = {
-          ...nextSlots[activeSlotForUpload],
-          fileName: file.name,
-          imagePreview: base64,
-          imageBase64: base64,
-          status: 'ready',
-          stepMessage: `Berkas ${file.name} siap dipindai`,
-          result: null,
-          error: null,
-        };
+        if (nextSlots[activeSlotForUpload]) {
+          nextSlots[activeSlotForUpload] = {
+            ...nextSlots[activeSlotForUpload],
+            fileName: file.name,
+            imagePreview: optimizedBase64,
+            imageBase64: optimizedBase64,
+            mimeType: 'image/jpeg',
+            status: 'ready',
+            stepMessage: `Berkas ${file.name} siap dipindai`,
+            result: null,
+            error: null,
+            isSaved: false,
+          };
+        }
         return nextSlots;
       });
-    };
-    reader.readAsDataURL(file);
+    } catch (err: any) {
+      console.error('Gagal membaca file spesifik slot:', err);
+    }
     e.target.value = '';
+  };
+
+  // INDIVIDUAL SLOT CAMERA CAPTURE
+  const handleSlotCameraCapture = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setBatchError(null);
+    try {
+      const rawBase64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+
+      const optimizedBase64 = await optimizeImageForOCR(rawBase64);
+
+      setBatchSlots((prev) => {
+        const nextSlots = [...prev];
+        if (nextSlots[activeSlotForUpload]) {
+          nextSlots[activeSlotForUpload] = {
+            ...nextSlots[activeSlotForUpload],
+            fileName: `Foto_Kamera_Slot_${activeSlotForUpload + 1}.jpg`,
+            imagePreview: optimizedBase64,
+            imageBase64: optimizedBase64,
+            mimeType: 'image/jpeg',
+            status: 'ready',
+            stepMessage: 'Foto kamera siap dipindai',
+            result: null,
+            error: null,
+            isSaved: false,
+          };
+        }
+        return nextSlots;
+      });
+    } catch (err: any) {
+      console.error('Gagal mengambil foto slot:', err);
+    }
+    e.target.value = '';
+  };
+
+  // LOAD 5 OFFICIAL RT 38 SAMPLE KK DOCUMENT IMAGES (FOR INSTANT SIMULTANEOUS SCAN TEST)
+  const handleLoadSampleKKDocuments = () => {
+    setBatchError(null);
+    setBatchSuccessToast(null);
+
+    const updated = batchSlots.map((slot, idx) => {
+      const sample = SAMPLE_KK_DOCUMENTS[idx] || SAMPLE_KK_DOCUMENTS[0];
+      const dataUrl = renderKKDocumentToDataUrl(sample);
+      return {
+        ...slot,
+        fileName: `Dokumen_KK_Resmi_${sample.namaKepalaKeluarga.replace(/[^a-zA-Z0-9]/g, '_')}.jpg`,
+        imagePreview: dataUrl,
+        imageBase64: dataUrl,
+        mimeType: 'image/jpeg',
+        status: 'ready' as const,
+        progress: 0,
+        stepMessage: `Berkas ${sample.namaKepalaKeluarga} siap dipindai OCR`,
+        result: null,
+        error: null,
+        isSaved: false,
+        targetBlok: sample.estimasiBlok as BlokRumah,
+        targetNomor: sample.estimasiNomor,
+      };
+    });
+
+    setBatchSlots(updated);
+    setBatchSuccessToast('5 Berkas Foto Dokumen KK Resmi RT 38 / RW 09 siap diuji coba pemindaian simultan!');
+    setTimeout(() => setBatchSuccessToast(null), 3000);
+  };
+
+  // UPDATE TARGET BLOCK & HOUSE NUMBER FOR A SLOT
+  const handleUpdateSlotHouse = (slotIndex: number, blok: BlokRumah, nomor: string) => {
+    setBatchSlots((prev) => {
+      const next = [...prev];
+      if (next[slotIndex]) {
+        next[slotIndex] = {
+          ...next[slotIndex],
+          targetBlok: blok,
+          targetNomor: nomor,
+          result: next[slotIndex].result
+            ? {
+                ...next[slotIndex].result!,
+                estimasiBlok: blok,
+                estimasiNomor: nomor,
+              }
+            : null,
+        };
+      }
+      return next;
+    });
   };
 
   const handleRemoveSlotImage = (index: number) => {
@@ -391,33 +571,46 @@ export const ScanKKModal: React.FC<ScanKKModalProps> = ({
   };
 
   // SINGLE FILE UPLOAD
-  const handleSingleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleSingleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onload = () => {
-        const result = reader.result as string;
-        setSelectedImage(result);
-        processRealImageWithAI(result);
-      };
-      reader.readAsDataURL(file);
+      try {
+        const rawBase64 = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+
+        const optimizedBase64 = await optimizeImageForOCR(rawBase64);
+        setSelectedImage(optimizedBase64);
+        processRealImageWithAI(optimizedBase64);
+      } catch (err: any) {
+        console.error('Gagal membaca berkas tunggal:', err);
+      }
     }
   };
 
-  const handlePaste = (e: React.ClipboardEvent) => {
+  const handlePaste = async (e: React.ClipboardEvent) => {
     const items = e.clipboardData?.items;
     if (!items) return;
     for (let i = 0; i < items.length; i++) {
       if (items[i].type.indexOf('image') !== -1) {
         const file = items[i].getAsFile();
         if (file) {
-          const reader = new FileReader();
-          reader.onload = () => {
-            const result = reader.result as string;
-            setSelectedImage(result);
-            processRealImageWithAI(result);
-          };
-          reader.readAsDataURL(file);
+          try {
+            const rawBase64 = await new Promise<string>((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onload = () => resolve(reader.result as string);
+              reader.onerror = reject;
+              reader.readAsDataURL(file);
+            });
+            const optimizedBase64 = await optimizeImageForOCR(rawBase64);
+            setSelectedImage(optimizedBase64);
+            processRealImageWithAI(optimizedBase64);
+          } catch (err: any) {
+            console.error('Gagal membaca gambar paste:', err);
+          }
         }
       }
     }
@@ -477,11 +670,11 @@ export const ScanKKModal: React.FC<ScanKKModalProps> = ({
     // Mark active slots as scanning
     setBatchSlots((prev) =>
       prev.map((slot) => {
-        if (slot.imageBase64) {
+        if (slot.imageBase64 && slot.imageBase64.length > 50) {
           return {
             ...slot,
             status: 'scanning',
-            progress: 25,
+            progress: 30,
             stepMessage: 'Membaca citra dokumen asli via OCR...',
             error: null,
           };
@@ -495,6 +688,8 @@ export const ScanKKModal: React.FC<ScanKKModalProps> = ({
         slotIndex: idx,
         fileName: s.fileName || undefined,
         imageBase64: s.imageBase64 || undefined,
+        targetBlok: s.targetBlok || undefined,
+        targetNomor: s.targetNomor || undefined,
       }));
 
       const res = await fetch('/api/dukcapil/verify-batch', {
@@ -508,7 +703,7 @@ export const ScanKKModal: React.FC<ScanKKModalProps> = ({
       if (res.ok && json.success && Array.isArray(json.batchResults)) {
         setBatchSlots((prev) =>
           prev.map((slot, i) => {
-            const batchItem = json.batchResults[i];
+            const batchItem = json.batchResults.find((r: any) => r.slotIndex === i) || json.batchResults[i];
             if (batchItem && batchItem.success && batchItem.data) {
               return {
                 ...slot,
@@ -527,18 +722,29 @@ export const ScanKKModal: React.FC<ScanKKModalProps> = ({
                 stepMessage: 'Gagal membaca berkas',
                 error: batchItem.error || 'Dokumen pada slot ini tidak terbaca.',
               };
+            } else if (slot.status === 'scanning') {
+              return {
+                ...slot,
+                status: slot.imageBase64 ? 'ready' : 'empty',
+                progress: 0,
+                stepMessage: slot.imageBase64 ? 'Siap dipindai ulang' : 'Menunggu berkas foto KK',
+              };
             }
             return slot;
           })
         );
 
         setIsBatchScanning(false);
-        setBatchScanSuccess(true);
 
         // Auto select first successful slot for inspection
         const firstSuccessIdx = json.batchResults.findIndex((r: any) => r.success);
         if (firstSuccessIdx !== -1) {
-          setSelectedBatchInspectIdx(firstSuccessIdx);
+          const matchIdx = json.batchResults[firstSuccessIdx].slotIndex ?? firstSuccessIdx;
+          setSelectedBatchInspectIdx(matchIdx);
+          setBatchScanSuccess(true);
+        } else {
+          setBatchScanSuccess(false);
+          setBatchError('Tidak ada teks dokumen KK yang berhasil terbaca. Pastikan foto Kartu Keluarga jelas dan tidak buram.');
         }
         return;
       }
@@ -547,6 +753,84 @@ export const ScanKKModal: React.FC<ScanKKModalProps> = ({
     } catch (err: any) {
       setIsBatchScanning(false);
       setBatchError(err.message || 'Terjadi kesalahan saat pemindaian berkas.');
+      setBatchSlots((prev) =>
+        prev.map((slot) => {
+          if (slot.status === 'scanning') {
+            return {
+              ...slot,
+              status: slot.imageBase64 ? 'ready' : 'empty',
+              progress: 0,
+              stepMessage: slot.imageBase64 ? 'Siap dipindai ulang' : 'Menunggu berkas foto KK',
+              error: err?.message || 'Koneksi terputus saat memindai slot.',
+            };
+          }
+          return slot;
+        })
+      );
+    }
+  };
+
+  // RESCAN A SINGLE SLOT THAT FAILED
+  const handleRescanSingleSlot = async (slotIndex: number) => {
+    const slot = batchSlots[slotIndex];
+    if (!slot || !slot.imageBase64) return;
+
+    setBatchSlots((prev) => {
+      const next = [...prev];
+      next[slotIndex] = {
+        ...next[slotIndex],
+        status: 'scanning',
+        progress: 40,
+        stepMessage: 'Memindai ulang citra via OCR...',
+        error: null,
+      };
+      return next;
+    });
+
+    try {
+      const res = await fetch('/api/scan-kk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          imageBase64: slot.imageBase64,
+          mimeType: slot.mimeType || 'image/jpeg',
+        }),
+      });
+
+      const json = await res.json();
+      if (res.ok && json.success && json.data) {
+        if (slot.targetBlok) json.data.estimasiBlok = slot.targetBlok;
+        if (slot.targetNomor) json.data.estimasiNomor = slot.targetNomor;
+
+        setBatchSlots((prev) => {
+          const next = [...prev];
+          next[slotIndex] = {
+            ...next[slotIndex],
+            status: 'done',
+            progress: 100,
+            stepMessage: '100% Sah Terbaca dari Dokumen',
+            result: json.data,
+            error: null,
+          };
+          return next;
+        });
+        setSelectedBatchInspectIdx(slotIndex);
+        setBatchScanSuccess(true);
+        return;
+      }
+      throw new Error(json.error || 'Dokumen pada slot ini tidak terbaca.');
+    } catch (err: any) {
+      setBatchSlots((prev) => {
+        const next = [...prev];
+        next[slotIndex] = {
+          ...next[slotIndex],
+          status: 'error',
+          progress: 0,
+          stepMessage: 'Gagal membaca berkas',
+          error: err?.message || 'Dokumen pada slot ini tidak terbaca.',
+        };
+        return next;
+      });
     }
   };
 
@@ -564,13 +848,23 @@ export const ScanKKModal: React.FC<ScanKKModalProps> = ({
   const handleSaveBatchItem = (slotIndex: number) => {
     const slot = batchSlots[slotIndex];
     if (!slot || !slot.result) return;
-    saveSingleKKToDatabase(slot.result);
+    saveSingleKKToDatabase(slot.result, slot.targetBlok, slot.targetNomor);
 
     const updated = [...batchSlots];
     updated[slotIndex] = { ...updated[slotIndex], isSaved: true };
     setBatchSlots(updated);
 
-    setBatchSuccessToast(`KK Keluarga ${slot.result.namaKepalaKeluarga} (${slot.result.estimasiBlok || 'Blok'}-${slot.result.estimasiNomor || 'No'}) berhasil disimpan.`);
+    logAudit(
+      'AI_SCAN_KK_SINGLE_IMPORT',
+      'Data Warga',
+      'success',
+      `Berhasil menyimpan KK Keluarga ${slot.result.namaKepalaKeluarga} ke direktori ${infoPerumahan.rtRw}.`
+    );
+
+    setBatchSuccessToast(`KK Keluarga ${slot.result.namaKepalaKeluarga} (${slot.targetBlok || slot.result.estimasiBlok || 'Blok'}-${slot.targetNomor || slot.result.estimasiNomor || 'No'}) berhasil disimpan.`);
+    if (onSuccessRegistered) {
+      onSuccessRegistered();
+    }
     setTimeout(() => setBatchSuccessToast(null), 3000);
   };
 
@@ -581,7 +875,7 @@ export const ScanKKModal: React.FC<ScanKKModalProps> = ({
 
     batchSlots.forEach((slot, idx) => {
       if (slot.result) {
-        saveSingleKKToDatabase(slot.result);
+        saveSingleKKToDatabase(slot.result, slot.targetBlok, slot.targetNomor);
         updated[idx] = { ...updated[idx], isSaved: true };
         savedTotal++;
       }
@@ -612,16 +906,18 @@ export const ScanKKModal: React.FC<ScanKKModalProps> = ({
   };
 
   // Helper to save KK into RBAC context
-  const saveSingleKKToDatabase = (kkData: ExtractedKKData) => {
+  const saveSingleKKToDatabase = (kkData: ExtractedKKData, targetBlok?: BlokRumah, targetNomor?: string) => {
     const members = kkData.anggotaKeluarga || [];
     const firstMember = members[0];
+    const finalBlok = targetBlok || kkData.estimasiBlok || 'Blok AE';
+    const finalNomor = targetNomor || kkData.estimasiNomor || 'AE-01';
 
     tambahWarga({
       namaLengkap: kkData.namaKepalaKeluarga || 'Kepala Keluarga Terdaftar',
-      nik: firstMember?.nik || kkData.nomorKK,
+      nik: kkData.nikKepalaKeluarga || firstMember?.nik || kkData.nomorKK,
       noKK: kkData.nomorKK,
-      blokRumah: kkData.estimasiBlok || 'Blok AE',
-      nomorRumah: kkData.estimasiNomor || 'AE-01',
+      blokRumah: finalBlok,
+      nomorRumah: finalNomor,
       statusHunian: kkData.statusHunian || 'Tetap',
       statusKeluarga: 'Kepala Keluarga',
       jenisKelamin: firstMember?.jenisKelamin || 'Laki-laki',
@@ -630,8 +926,9 @@ export const ScanKKModal: React.FC<ScanKKModalProps> = ({
       email: '',
       alamatKtp: kkData.alamatKtp || kkData.alamat || 'Alamat Asal KTP',
       alamatDomisili:
-        kkData.alamatDomisili ||
-        `${infoPerumahan.namaPerumahan} ${kkData.estimasiBlok || 'Blok AE'} No. ${kkData.estimasiNomor || 'AE-01'}, ${infoPerumahan.rtRw} Sepanjang Taman Sidoarjo`,
+        kkData.alamatDomisili && !kkData.alamatDomisili.includes('AE-01')
+          ? kkData.alamatDomisili
+          : `${infoPerumahan.namaPerumahan} ${finalBlok} No. ${finalNomor}, ${infoPerumahan.rtRw} Sepanjang Taman Sidoarjo`,
       statusDomisiliSamaDenganKk: kkData.statusDomisiliSamaDenganKk ?? false,
       jumlahAnggotaKeluarga: members.length || 1,
       tanggalMasuk: new Date().toISOString().split('T')[0],
@@ -654,7 +951,7 @@ export const ScanKKModal: React.FC<ScanKKModalProps> = ({
         namaAyah: 'Ayah',
         namaIbu: 'Ibu',
         alamatKtp: ak.alamatKtp || kkData.alamatKtp || kkData.alamat,
-        alamatDomisili: ak.alamatDomisili || kkData.alamatDomisili,
+        alamatDomisili: ak.alamatDomisili || `${infoPerumahan.namaPerumahan} ${finalBlok} No. ${finalNomor}, ${infoPerumahan.rtRw} Sepanjang Taman Sidoarjo`,
         statusDomisiliSamaDenganKK: ak.statusDomisiliSamaDenganKK ?? true,
         statusTinggalDomisili: (ak.statusTinggalDomisili as any) || 'Tinggal Bersama di RT',
         keteranganDomisili: ak.keteranganDomisili || 'Tercatat sesuai dokumen kependudukan resmi',
@@ -665,8 +962,8 @@ export const ScanKKModal: React.FC<ScanKKModalProps> = ({
     tambahIuranBaru({
       wargaId: 'wrg_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
       namaWarga: kkData.namaKepalaKeluarga || 'Kepala Keluarga',
-      blokRumah: kkData.estimasiBlok || 'Blok AE',
-      nomorRumah: kkData.estimasiNomor || 'AE-01',
+      blokRumah: finalBlok,
+      nomorRumah: finalNomor,
       periodeBulan: 'Oktober 2026',
       nominal: 150000,
       jenisIuran: 'Iuran Kebersihan & Keamanan',
@@ -1110,14 +1407,66 @@ export const ScanKKModal: React.FC<ScanKKModalProps> = ({
                             </p>
                           </div>
                         ) : slot.status === 'error' ? (
-                          <p className="text-[10px] text-rose-600 font-semibold leading-tight">
-                            {slot.error}
-                          </p>
+                          <div className="space-y-1">
+                            <p className="text-[10px] text-rose-600 font-semibold leading-tight">
+                              {slot.error}
+                            </p>
+                            {hasImage && !isBatchScanning && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleRescanSingleSlot(index);
+                                }}
+                                className="w-full mt-1 py-1 px-2 bg-rose-100 hover:bg-rose-200 text-rose-800 rounded-lg text-[9px] font-bold flex items-center justify-center gap-1 transition-colors cursor-pointer"
+                              >
+                                <RefreshCw className="w-3 h-3" />
+                                <span>Pindai Ulang Slot Ini</span>
+                              </button>
+                            )}
+                          </div>
                         ) : (
                           <p className="text-[10px] text-slate-500 font-medium">
                             {slot.stepMessage}
                           </p>
                         )}
+
+                        {/* Target house badge & selector */}
+                        <div className="pt-1 text-[9px] text-slate-500 border-t border-slate-100 space-y-1">
+                          <div className="flex items-center justify-between">
+                            <span className="font-semibold text-slate-600">Target Rumah:</span>
+                            <span className="font-mono font-bold text-slate-800 bg-slate-100 px-1.5 py-0.2 rounded">
+                              {slot.targetBlok || 'Blok AE'} - {slot.targetNomor || 'AE-01'}
+                            </span>
+                          </div>
+                          {!isScanningSlot && (
+                            <div className="grid grid-cols-2 gap-1 pt-0.5" onClick={(e) => e.stopPropagation()}>
+                              <select
+                                value={slot.targetBlok || 'Blok AE'}
+                                onChange={(e) => handleUpdateSlotHouse(index, e.target.value as BlokRumah, slot.targetNomor || 'AE-01')}
+                                className="px-1 py-0.5 bg-white border border-slate-300 rounded text-[9px] font-medium"
+                              >
+                                <option value="Blok AE">Blok AE</option>
+                                <option value="Blok DB">Blok DB</option>
+                                <option value="Blok DC">Blok DC</option>
+                                <option value="Blok DE">Blok DE</option>
+                                <option value="Blok DF">Blok DF</option>
+                                <option value="Blok DG">Blok DG</option>
+                                <option value="Blok A">Blok A</option>
+                                <option value="Blok B">Blok B</option>
+                                <option value="Blok C">Blok C</option>
+                                <option value="Blok D">Blok D</option>
+                              </select>
+                              <input
+                                type="text"
+                                value={slot.targetNomor || ''}
+                                placeholder="No. Rumah"
+                                onChange={(e) => handleUpdateSlotHouse(index, slot.targetBlok || 'Blok AE', e.target.value)}
+                                className="px-1 py-0.5 bg-white border border-slate-300 rounded text-[9px] font-mono font-bold"
+                              />
+                            </div>
+                          )}
+                        </div>
                       </div>
 
                       {/* Slot Action */}
@@ -1204,16 +1553,47 @@ export const ScanKKModal: React.FC<ScanKKModalProps> = ({
                       </div>
                     </div>
 
-                    <div className="p-3 bg-emerald-50/70 border border-emerald-300 rounded-xl space-y-1">
+                    <div className="p-3 bg-emerald-50/70 border border-emerald-300 rounded-xl space-y-1.5">
                       <div className="flex items-center justify-between">
                         <span className="font-bold text-emerald-950 text-[10px] uppercase">
                           Alamat Domisili Aktual KK di Perumahan:
                         </span>
                         <span className="px-1.5 py-0.5 rounded bg-emerald-200 text-emerald-900 font-bold text-[9px]">
-                          {batchSlots[selectedBatchInspectIdx].result?.estimasiBlok || 'Blok AE'} No. {batchSlots[selectedBatchInspectIdx].result?.estimasiNomor || 'AE-01'}
+                          {batchSlots[selectedBatchInspectIdx].targetBlok || batchSlots[selectedBatchInspectIdx].result?.estimasiBlok || 'Blok AE'} No. {batchSlots[selectedBatchInspectIdx].targetNomor || batchSlots[selectedBatchInspectIdx].result?.estimasiNomor || 'AE-01'}
                         </span>
                       </div>
-                      <div className="font-medium text-emerald-950">
+                      <div className="grid grid-cols-2 gap-2 pt-0.5">
+                        <div>
+                          <label className="block text-[9px] font-bold text-emerald-900 mb-0.5">Pilih Blok:</label>
+                          <select
+                            value={batchSlots[selectedBatchInspectIdx].targetBlok || batchSlots[selectedBatchInspectIdx].result?.estimasiBlok || 'Blok AE'}
+                            onChange={(e) => handleUpdateSlotHouse(selectedBatchInspectIdx, e.target.value as BlokRumah, batchSlots[selectedBatchInspectIdx].targetNomor || 'AE-01')}
+                            className="w-full px-2 py-1 bg-white border border-emerald-300 rounded-lg text-xs font-semibold text-emerald-950"
+                          >
+                            <option value="Blok AE">Blok AE</option>
+                            <option value="Blok DB">Blok DB</option>
+                            <option value="Blok DC">Blok DC</option>
+                            <option value="Blok DE">Blok DE</option>
+                            <option value="Blok DF">Blok DF</option>
+                            <option value="Blok DG">Blok DG</option>
+                            <option value="Blok A">Blok A</option>
+                            <option value="Blok B">Blok B</option>
+                            <option value="Blok C">Blok C</option>
+                            <option value="Blok D">Blok D</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-[9px] font-bold text-emerald-900 mb-0.5">Nomor Rumah:</label>
+                          <input
+                            type="text"
+                            value={batchSlots[selectedBatchInspectIdx].targetNomor || batchSlots[selectedBatchInspectIdx].result?.estimasiNomor || ''}
+                            onChange={(e) => handleUpdateSlotHouse(selectedBatchInspectIdx, batchSlots[selectedBatchInspectIdx].targetBlok || 'Blok AE', e.target.value)}
+                            placeholder="Contoh: AE-01"
+                            className="w-full px-2 py-1 bg-white border border-emerald-300 rounded-lg text-xs font-mono font-bold text-emerald-950"
+                          />
+                        </div>
+                      </div>
+                      <div className="text-[11px] font-medium text-emerald-950">
                         {batchSlots[selectedBatchInspectIdx].result?.alamatDomisili || `${infoPerumahan.namaPerumahan}, ${infoPerumahan.rtRw} Sepanjang Taman Sidoarjo`}
                       </div>
                     </div>

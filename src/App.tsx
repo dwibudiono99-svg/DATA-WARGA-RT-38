@@ -12,6 +12,7 @@ import { AuthModal } from './components/AuthModal';
 import { ScanKKModal } from './components/ScanKKModal';
 import { FormPendataanModelKK } from './components/FormPendataanModelKK';
 import { WebHostingPosterModal } from './components/WebHostingPosterModal';
+import { AdminDelegationModal } from './components/AdminDelegationModal';
 
 // Admin / Pengurus RT Views
 import { RTDashboard } from './components/WargaView/RTDashboard';
@@ -43,6 +44,7 @@ function AppContent() {
   const [isGlobalKKFormOpen, setIsGlobalKKFormOpen] = useState(false);
   const [globalKKFormData, setGlobalKKFormData] = useState<any>(null);
   const [isPosterModalOpen, setIsPosterModalOpen] = useState(false);
+  const [isAdminDelegationOpen, setIsAdminDelegationOpen] = useState(false);
   const [copiedFooter, setCopiedFooter] = useState(false);
 
   const handleOpenScanKK = (tab: 'batch_5kk' | 'dukcapil_nik' | 'camera' | 'upload' = 'batch_5kk') => {
@@ -98,6 +100,7 @@ function AppContent() {
         onOpenAuthModal={() => setIsAuthModalOpen(true)}
         onOpenScanKK={() => handleOpenScanKK('batch_5kk')}
         onOpenWebHosting={() => setIsPosterModalOpen(true)}
+        onOpenAdminDelegation={() => setIsAdminDelegationOpen(true)}
       />
 
       {/* Main Body Content Container */}

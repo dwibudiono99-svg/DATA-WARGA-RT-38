@@ -150,69 +150,126 @@ export const FormPendataanModelKK: React.FC<FormPendataanModelKKProps> = ({
   // Populate data when opening
   useEffect(() => {
     if (initialData) {
-      setFormData({
-        namaLengkap: initialData.namaLengkap || '',
-        nik: initialData.nik || '',
-        noKK: initialData.noKK || '',
-        blokRumah: initialData.blokRumah || 'Blok AE',
-        nomorRumah: initialData.nomorRumah || 'AE-01',
-        statusHunian: initialData.statusHunian || 'Tetap',
-        statusKeluarga: initialData.statusKeluarga || 'Kepala Keluarga',
-        jenisKelamin: initialData.jenisKelamin || 'Laki-laki',
-        tempatLahir: initialData.tempatLahir || 'Sidoarjo',
-        tanggalLahir: initialData.tanggalLahir || '1980-03-15',
-        agama: initialData.agama || 'Islam',
-        pendidikan: initialData.pendidikan || 'Diploma IV / Strata I',
-        pekerjaan: initialData.pekerjaan || 'Karyawan Swasta',
-        golonganDarah: initialData.golonganDarah || 'O',
-        statusPernikahan: initialData.statusPernikahan || 'Kawin Tercatat',
-        tanggalPerkawinan: initialData.tanggalPerkawinan || '',
-        hubunganKeluarga: initialData.hubunganKeluarga || 'Kepala Keluarga',
-        kewarganegaraan: initialData.kewarganegaraan || 'WNI',
-        noPaspor: initialData.noPaspor || '',
-        noKitasKitap: initialData.noKitasKitap || '',
-        namaAyah: initialData.namaAyah || '',
-        namaIbu: initialData.namaIbu || '',
-        alamatKtp: initialData.alamatKtp || 'Jl. Raya Mastrip Sepanjang, Sidoarjo',
-        alamatDomisili:
-          initialData.alamatDomisili ||
-          `${infoPerumahan.namaPerumahan} ${initialData.blokRumah} No. ${initialData.nomorRumah}, ${infoPerumahan.rtRw} ${infoPerumahan.kelurahan} ${infoPerumahan.kecamatan}`,
-        statusDomisiliSamaDenganKk: initialData.statusDomisiliSamaDenganKk || false,
-        noHp: initialData.noHp || '+62 812-',
-        email: initialData.email || '',
-        jumlahAnggotaKeluarga: initialData.anggotaKeluarga?.length || initialData.jumlahAnggotaKeluarga || 1,
-        tanggalMasuk: initialData.tanggalMasuk || new Date().toISOString().split('T')[0],
-        catatanKhusus: initialData.catatanKhusus || '',
-        statusVerifikasiKK: initialData.statusVerifikasiKK || 'Terverifikasi',
-        anggotaKeluarga: initialData.anggotaKeluarga && initialData.anggotaKeluarga.length > 0
-          ? initialData.anggotaKeluarga
+      const anyData = initialData as any;
+      const headName = anyData.namaLengkap || anyData.namaKepalaKeluarga || '';
+      const headKK = anyData.noKK || anyData.nomorKK || '';
+      const firstMember = anyData.anggotaKeluarga?.[0];
+      const headNik = anyData.nik || firstMember?.nik || '';
+      const blok = anyData.blokRumah || anyData.estimasiBlok || 'Blok AE';
+      const nomor = anyData.nomorRumah || anyData.estimasiNomor || 'AE-01';
+      const pekerjaan =
+        anyData.pekerjaan ||
+        anyData.pekerjaanKepalaKeluarga ||
+        firstMember?.jenisPekerjaan ||
+        firstMember?.pekerjaan ||
+        'Karyawan Swasta';
+      const jenisKelamin = anyData.jenisKelamin || firstMember?.jenisKelamin || 'Laki-laki';
+      const tempatLahir = anyData.tempatLahir || firstMember?.tempatLahir || 'Sidoarjo';
+      const tanggalLahir = anyData.tanggalLahir || firstMember?.tanggalLahir || '1980-03-15';
+      const agama = anyData.agama || firstMember?.agama || 'Islam';
+      const pendidikan = anyData.pendidikan || firstMember?.pendidikan || 'Diploma IV / Strata I';
+      const statusPernikahan = anyData.statusPernikahan || firstMember?.statusPerkawinan || 'Kawin Tercatat';
+      const alamatKtp =
+        anyData.alamatKtp ||
+        anyData.alamat ||
+        'Jl. Raya Mastrip Sepanjang No. 42, Kel. Sepanjang, Kec. Taman, Kab. Sidoarjo';
+      const alamatDomisili =
+        anyData.alamatDomisili ||
+        `${infoPerumahan.namaPerumahan} ${blok} No. ${nomor}, ${infoPerumahan.rtRw} ${infoPerumahan.kelurahan} ${infoPerumahan.kecamatan}`;
+
+      const rawMembers = Array.isArray(anyData.anggotaKeluarga) ? anyData.anggotaKeluarga : [];
+      const parsedMembers: AnggotaKeluargaKK[] =
+        rawMembers.length > 0
+          ? rawMembers.map((ak: any, idx: number) => ({
+              id: ak.id || `ak_form_${Date.now()}_${idx}_${Math.floor(Math.random() * 1000)}`,
+              namaLengkap: ak.namaLengkap || '',
+              nik: ak.nik || '',
+              jenisKelamin: ak.jenisKelamin || 'Laki-laki',
+              tempatLahir: ak.tempatLahir || 'Sidoarjo',
+              tanggalLahir: ak.tanggalLahir || '1990-01-01',
+              agama: (ak.agama as any) || 'Islam',
+              pendidikan: (ak.pendidikan as any) || 'Diploma IV / Strata I',
+              pekerjaan: ak.pekerjaan || ak.jenisPekerjaan || 'Karyawan Swasta',
+              golonganDarah: (ak.golonganDarah as any) || 'O',
+              statusPernikahan: (ak.statusPernikahan as any) || (ak.statusPerkawinan as any) || 'Kawin Tercatat',
+              hubunganKeluarga:
+                (ak.hubunganKeluarga as any) ||
+                (ak.statusHubunganDalamKeluarga as any) ||
+                (idx === 0 ? 'Kepala Keluarga' : idx === 1 ? 'Istri' : 'Anak'),
+              kewarganegaraan: (ak.kewarganegaraan as any) || 'WNI',
+              namaAyah: ak.namaAyah || '-',
+              namaIbu: ak.namaIbu || '-',
+              alamatKtp: ak.alamatKtp || alamatKtp,
+              alamatDomisili: ak.alamatDomisili || alamatDomisili,
+              statusDomisiliSamaDenganKK: ak.statusDomisiliSamaDenganKK ?? true,
+              statusTinggalDomisili: (ak.statusTinggalDomisili as any) || 'Tinggal Bersama di RT',
+              keteranganDomisili: ak.keteranganDomisili || 'Tercatat sesuai dokumen kependudukan resmi',
+              noHpAnggota: ak.noHpAnggota || anyData.noHp || '+62 812-3456-7890',
+            }))
           : [
               {
                 id: 'ak_primary_' + Date.now(),
-                namaLengkap: initialData.namaLengkap,
-                nik: initialData.nik,
-                jenisKelamin: initialData.jenisKelamin,
-                tempatLahir: initialData.tempatLahir || 'Sidoarjo',
-                tanggalLahir: initialData.tanggalLahir || '1980-03-15',
-                agama: initialData.agama || 'Islam',
-                pendidikan: initialData.pendidikan || 'Diploma IV / Strata I',
-                pekerjaan: initialData.pekerjaan || 'Karyawan Swasta',
-                golonganDarah: initialData.golonganDarah || 'O',
-                statusPernikahan: initialData.statusPernikahan || 'Kawin Tercatat',
+                namaLengkap: headName,
+                nik: headNik,
+                jenisKelamin,
+                tempatLahir,
+                tanggalLahir,
+                agama,
+                pendidikan,
+                pekerjaan,
+                golonganDarah: 'O',
+                statusPernikahan,
                 hubunganKeluarga: 'Kepala Keluarga',
                 kewarganegaraan: 'WNI',
-                namaAyah: initialData.namaAyah || '-',
-                namaIbu: initialData.namaIbu || '-',
-                alamatKtp: initialData.alamatKtp,
-                alamatDomisili: initialData.alamatDomisili,
+                namaAyah: '-',
+                namaIbu: '-',
+                alamatKtp,
+                alamatDomisili,
                 statusDomisiliSamaDenganKK: true,
                 statusTinggalDomisili: 'Tinggal Bersama di RT',
                 keteranganDomisili: 'Tinggal bersama di rumah utama RT 38 / RW 09',
-                noHpAnggota: initialData.noHp,
+                noHpAnggota: anyData.noHp || '+62 812-3456-7890',
               },
-            ],
+            ];
+
+      setFormData({
+        namaLengkap: headName,
+        nik: headNik,
+        noKK: headKK,
+        blokRumah: blok as any,
+        nomorRumah: nomor,
+        statusHunian: (anyData.statusHunian as any) || 'Tetap',
+        statusKeluarga: 'Kepala Keluarga',
+        jenisKelamin,
+        tempatLahir,
+        tanggalLahir,
+        agama,
+        pendidikan,
+        pekerjaan,
+        golonganDarah: (anyData.golonganDarah as any) || 'O',
+        statusPernikahan,
+        tanggalPerkawinan: anyData.tanggalPerkawinan || '',
+        hubunganKeluarga: 'Kepala Keluarga',
+        kewarganegaraan: 'WNI',
+        noPaspor: anyData.noPaspor || '',
+        noKitasKitap: anyData.noKitasKitap || '',
+        namaAyah: anyData.namaAyah || '',
+        namaIbu: anyData.namaIbu || '',
+        alamatKtp,
+        alamatDomisili,
+        statusDomisiliSamaDenganKk: anyData.statusDomisiliSamaDenganKk || false,
+        noHp: anyData.noHp || '+62 812-',
+        email: anyData.email || '',
+        jumlahAnggotaKeluarga: parsedMembers.length,
+        tanggalMasuk: anyData.tanggalMasuk || new Date().toISOString().split('T')[0],
+        catatanKhusus: anyData.catatanKhusus || 'Data kependudukan terverifikasi.',
+        statusVerifikasiKK: (anyData.statusVerifikasiKK as any) || 'Terverifikasi',
+        anggotaKeluarga: parsedMembers,
       });
-      setDukcapilInputNik(initialData.nik || '');
+      setDukcapilInputNik(headNik);
+      if (anyData.tokenSIAK || anyData.verifikasiDukcapil?.noRegistrasiSIAK) {
+        setDukcapilToken(anyData.tokenSIAK || anyData.verifikasiDukcapil?.noRegistrasiSIAK);
+      }
     } else {
       // Default blank new KK with realistic template
       const randomNik = '351514' + Math.floor(1000000000 + Math.random() * 9000000000);
