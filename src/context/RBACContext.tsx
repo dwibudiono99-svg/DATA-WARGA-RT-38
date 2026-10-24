@@ -70,6 +70,18 @@ interface RBACContextType {
   cabutHakAksesAdmin: (userIdOrWargaName: string) => boolean;
   ubahJabatanAdmin: (userId: string, newRoleTitle: string) => boolean;
   isWargaAdmin: (warga: WargaItem) => { isAdmin: boolean; roleTitle?: string; user?: User };
+  operAdminKeRandomWarga: (excludeCurrent?: boolean) => {
+    success: boolean;
+    warga?: WargaItem;
+    user?: User;
+    message: string;
+  };
+  hapusSemuaDataDummyDanOperAdmin: () => {
+    success: boolean;
+    warga?: WargaItem;
+    user?: User;
+    message: string;
+  };
 
   // Kop & Info Perumahan Management
   updateInfoPerumahan: (newInfo: Partial<InfoPerumahan>) => boolean;
@@ -153,7 +165,20 @@ export const RBACProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [users, setUsers] = useState<User[]>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEYS.USERS);
-      return saved ? JSON.parse(saved) : INITIAL_USERS;
+      if (saved) {
+        const parsed: User[] = JSON.parse(saved);
+        const hasLegacyDummy = parsed.some(
+          (u) => u.id === 'usr_admin_rt' || u.id?.startsWith('usr_warga_0') || u.name?.includes('Budi Santoso')
+        );
+        if (hasLegacyDummy) {
+          const filtered = parsed.filter(
+            (u) => u.id !== 'usr_admin_rt' && !u.id?.startsWith('usr_warga_0') && !u.name?.includes('Budi Santoso')
+          );
+          return filtered.length > 0 ? filtered : INITIAL_USERS;
+        }
+        return parsed;
+      }
+      return INITIAL_USERS;
     } catch {
       return INITIAL_USERS;
     }
@@ -162,7 +187,10 @@ export const RBACProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [currentUserId, setCurrentUserId] = useState<string>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEYS.CURRENT_USER_ID);
-      return saved || INITIAL_USERS[0].id; // Default Ketua RT (Admin)
+      if (!saved || saved === 'usr_admin_rt' || saved === 'usr_warga_01') {
+        return INITIAL_USERS[0].id; // Default Ketua RT (Admin) Sidoarjo
+      }
+      return saved;
     } catch {
       return INITIAL_USERS[0].id;
     }
@@ -179,7 +207,8 @@ export const RBACProvider: React.FC<{ children: React.ReactNode }> = ({ children
           parsed.kelurahan === 'Sukamaju Indah' ||
           parsed.namaPerumahan?.includes('Griya Asri Pratama') ||
           parsed.headerBaris3?.includes('RT 04') ||
-          parsed.headerBaris3?.includes('RT 39')
+          parsed.headerBaris3?.includes('RT 39') ||
+          parsed.namaKetuaRT === 'Budi Santoso'
         ) {
           return INITIAL_INFO_PERUMAHAN;
         }
@@ -203,7 +232,20 @@ export const RBACProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [wargaList, setWargaList] = useState<WargaItem[]>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEYS.WARGA);
-      return saved ? JSON.parse(saved) : INITIAL_WARGA;
+      if (saved) {
+        const parsed: WargaItem[] = JSON.parse(saved);
+        const hasLegacyDummy = parsed.some(
+          (w) => w.id?.startsWith('wrg_0') || w.nik?.startsWith('3276') || w.namaLengkap?.includes('Budi Santoso')
+        );
+        if (hasLegacyDummy) {
+          const filtered = parsed.filter(
+            (w) => !w.id?.startsWith('wrg_0') && !w.nik?.startsWith('3276') && !w.namaLengkap?.includes('Budi Santoso')
+          );
+          return filtered.length > 0 ? filtered : INITIAL_WARGA;
+        }
+        return parsed;
+      }
+      return INITIAL_WARGA;
     } catch {
       return INITIAL_WARGA;
     }
@@ -212,7 +254,20 @@ export const RBACProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [iuranList, setIuranList] = useState<IuranItem[]>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEYS.IURAN);
-      return saved ? JSON.parse(saved) : INITIAL_IURAN;
+      if (saved) {
+        const parsed: IuranItem[] = JSON.parse(saved);
+        const hasLegacyDummy = parsed.some(
+          (i) => i.wargaId?.startsWith('wrg_0') || i.namaWarga?.includes('Budi Santoso')
+        );
+        if (hasLegacyDummy) {
+          const filtered = parsed.filter(
+            (i) => !i.wargaId?.startsWith('wrg_0') && !i.namaWarga?.includes('Budi Santoso')
+          );
+          return filtered.length > 0 ? filtered : INITIAL_IURAN;
+        }
+        return parsed;
+      }
+      return INITIAL_IURAN;
     } catch {
       return INITIAL_IURAN;
     }
@@ -669,6 +724,251 @@ export const RBACProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     return { isAdmin: false };
+  };
+
+  // Oper Admin ke Random Warga yang terdata dalam database
+  const operAdminKeRandomWarga = (excludeCurrent: boolean = true): {
+    success: boolean;
+    warga?: WargaItem;
+    user?: User;
+    message: string;
+  } => {
+    // Pastikan data warga valid & bersih
+    const cleanPool = wargaList.filter(
+      (w) => !w.id?.startsWith('wrg_0') && !w.nik?.startsWith('3276') && !w.namaLengkap?.includes('Budi Santoso')
+    );
+    const pool = cleanPool.length > 0 ? cleanPool : INITIAL_WARGA;
+
+    // Filter kandidat warga agar berbeda dari admin yang sedang aktif jika memungkinkan
+    let candidates = pool;
+    if (excludeCurrent && pool.length > 1) {
+      candidates = pool.filter(
+        (w) =>
+          w.namaLengkap.toLowerCase().trim() !== currentUser.name.toLowerCase().trim() &&
+          !(w.blokRumah === currentUser.blokRumah && w.nomorRumah === currentUser.nomorRumah)
+      );
+      if (candidates.length === 0) {
+        candidates = pool;
+      }
+    }
+
+    const randomIndex = Math.floor(Math.random() * candidates.length);
+    const chosenWarga = candidates[randomIndex];
+
+    if (!chosenWarga) {
+      return { success: false, message: 'Tidak ada data warga di database yang dapat ditunjuk sebagai Admin.' };
+    }
+
+    // Cari user yang bersangkutan jika sudah punya akun
+    const existingIndex = users.findIndex(
+      (u) =>
+        u.name.toLowerCase().trim() === chosenWarga.namaLengkap.toLowerCase().trim() ||
+        (u.blokRumah === chosenWarga.blokRumah && u.nomorRumah === chosenWarga.nomorRumah)
+    );
+
+    let appointedUser: User;
+    let updatedUsersList: User[];
+
+    if (existingIndex >= 0) {
+      appointedUser = {
+        ...users[existingIndex],
+        role: 'admin',
+        roleTitle: 'Ketua RT 38 / Administrator',
+        status: 'active',
+      };
+      // Alihkan hak admin: Jadikan user terpilih sebagai admin, dan alihkan admin sebelumnya ke warga
+      updatedUsersList = users.map((u, idx) => {
+        if (idx === existingIndex) return appointedUser;
+        if (u.id === currentUser.id && u.id !== appointedUser.id) {
+          return {
+            ...u,
+            role: 'user' as Role,
+            roleTitle: `Warga Penghuni ${u.blokRumah}-${u.nomorRumah}`,
+          };
+        }
+        return u;
+      });
+    } else {
+      appointedUser = {
+        id: `usr_adm_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+        name: chosenWarga.namaLengkap,
+        email: `${chosenWarga.namaLengkap.toLowerCase().replace(/[^a-z0-9]/g, '.')}@rt38.sidoarjo.id`,
+        role: 'admin',
+        roleTitle: 'Ketua RT 38 / Administrator',
+        status: 'active',
+        blokRumah: chosenWarga.blokRumah,
+        nomorRumah: chosenWarga.nomorRumah,
+        avatar:
+          chosenWarga.jenisKelamin === 'Perempuan'
+            ? 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80'
+            : 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
+        phone: chosenWarga.noHp,
+        createdAt: new Date().toISOString(),
+        lastLogin: new Date().toISOString(),
+      };
+      // Demote current user if admin
+      const demotedUsers = users.map((u) => {
+        if (u.id === currentUser.id) {
+          return {
+            ...u,
+            role: 'user' as Role,
+            roleTitle: `Warga Penghuni ${u.blokRumah}-${u.nomorRumah}`,
+          };
+        }
+        return u;
+      });
+      updatedUsersList = [appointedUser, ...demotedUsers];
+    }
+
+    setUsers(updatedUsersList);
+    localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(updatedUsersList));
+
+    // Langsung alihkan sesi login aktif ke warga terpilih
+    setCurrentUserId(appointedUser.id);
+    localStorage.setItem(STORAGE_KEYS.CURRENT_USER_ID, appointedUser.id);
+
+    // Sinkronkan nama Ketua RT di Info Perumahan & KOP resmi
+    const updatedInfo: InfoPerumahan = {
+      ...infoPerumahan,
+      namaKetuaRT: chosenWarga.namaLengkap,
+      nikKetuaRT: chosenWarga.nik,
+    };
+    setInfoPerumahan(updatedInfo);
+    localStorage.setItem(STORAGE_KEYS.INFO, JSON.stringify(updatedInfo));
+
+    notifyRealtimeSync({ users: updatedUsersList, info: updatedInfo });
+
+    logAudit(
+      'OPER_ADMIN_RANDOM',
+      'Manajemen Pengurus RT',
+      'success',
+      `Hak akses Admin RT 38 resmi diserahkan ke warga database: ${chosenWarga.namaLengkap} (${chosenWarga.blokRumah} No. ${chosenWarga.nomorRumah}, NIK: ${chosenWarga.nik}). Sesi aktif langsung beralih.`
+    );
+
+    return {
+      success: true,
+      warga: chosenWarga,
+      user: appointedUser,
+      message: `Berhasil! Hak akses Admin RT 38 kini diserahkan kepada "${chosenWarga.namaLengkap}" (${chosenWarga.blokRumah} No. ${chosenWarga.nomorRumah}).`,
+    };
+  };
+
+  // Hapus seluruh data dummy dan oper admin ke random warga yang terdata dalam database
+  const hapusSemuaDataDummyDanOperAdmin = (): {
+    success: boolean;
+    warga?: WargaItem;
+    user?: User;
+    message: string;
+  } => {
+    // 1. Bersihkan warga: singkirkan id wrg_0*, NIK Depok 3276*, atau dummy Budi Santoso
+    let cleanWarga = wargaList.filter(
+      (w) => !w.id?.startsWith('wrg_0') && !w.nik?.startsWith('3276') && !w.namaLengkap?.includes('Budi Santoso')
+    );
+    if (cleanWarga.length === 0) {
+      cleanWarga = INITIAL_WARGA;
+    }
+    setWargaList(cleanWarga);
+    localStorage.setItem(STORAGE_KEYS.WARGA, JSON.stringify(cleanWarga));
+
+    // 2. Bersihkan users: singkirkan usr_admin_rt dan user dummy lama
+    let cleanUsers = users.filter(
+      (u) => u.id !== 'usr_admin_rt' && !u.id?.startsWith('usr_warga_0') && !u.name?.includes('Budi Santoso')
+    );
+    if (cleanUsers.length === 0) {
+      cleanUsers = INITIAL_USERS;
+    }
+
+    // 3. Bersihkan iuran lama yang merujuk dummy
+    const cleanIuran = iuranList.filter(
+      (i) => !i.wargaId?.startsWith('wrg_0') && !i.namaWarga?.includes('Budi Santoso')
+    );
+    const finalIuran = cleanIuran.length > 0 ? cleanIuran : INITIAL_IURAN;
+    setIuranList(finalIuran);
+    localStorage.setItem(STORAGE_KEYS.IURAN, JSON.stringify(finalIuran));
+
+    // 4. Pilih warga secara acak dari database warga resmi Sidoarjo RT 38
+    const randomIndex = Math.floor(Math.random() * cleanWarga.length);
+    const chosenWarga = cleanWarga[randomIndex];
+
+    // Buat atau angkat akun admin untuk warga acak terpilih
+    const existingIndex = cleanUsers.findIndex(
+      (u) =>
+        u.name.toLowerCase().trim() === chosenWarga.namaLengkap.toLowerCase().trim() ||
+        (u.blokRumah === chosenWarga.blokRumah && u.nomorRumah === chosenWarga.nomorRumah)
+    );
+
+    let appointedUser: User;
+    let finalUsers: User[];
+
+    if (existingIndex >= 0) {
+      appointedUser = {
+        ...cleanUsers[existingIndex],
+        role: 'admin',
+        roleTitle: 'Ketua RT 38 / Administrator',
+        status: 'active',
+      };
+      finalUsers = cleanUsers.map((u, idx) => (idx === existingIndex ? appointedUser : {
+        ...u,
+        role: 'user' as Role,
+        roleTitle: `Warga Penghuni ${u.blokRumah}-${u.nomorRumah}`,
+      }));
+    } else {
+      appointedUser = {
+        id: `usr_adm_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+        name: chosenWarga.namaLengkap,
+        email: `${chosenWarga.namaLengkap.toLowerCase().replace(/[^a-z0-9]/g, '.')}@rt38.sidoarjo.id`,
+        role: 'admin',
+        roleTitle: 'Ketua RT 38 / Administrator',
+        status: 'active',
+        blokRumah: chosenWarga.blokRumah,
+        nomorRumah: chosenWarga.nomorRumah,
+        avatar:
+          chosenWarga.jenisKelamin === 'Perempuan'
+            ? 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80'
+            : 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
+        phone: chosenWarga.noHp,
+        createdAt: new Date().toISOString(),
+        lastLogin: new Date().toISOString(),
+      };
+      const demoted = cleanUsers.map((u) => ({
+        ...u,
+        role: 'user' as Role,
+        roleTitle: `Warga Penghuni ${u.blokRumah}-${u.nomorRumah}`,
+      }));
+      finalUsers = [appointedUser, ...demoted];
+    }
+
+    setUsers(finalUsers);
+    localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(finalUsers));
+
+    // Alihkan sesi aktif ke admin baru
+    setCurrentUserId(appointedUser.id);
+    localStorage.setItem(STORAGE_KEYS.CURRENT_USER_ID, appointedUser.id);
+
+    // Perbarui data KOP & Info Perumahan dengan nama Ketua RT baru
+    const updatedInfo: InfoPerumahan = {
+      ...INITIAL_INFO_PERUMAHAN,
+      namaKetuaRT: chosenWarga.namaLengkap,
+      nikKetuaRT: chosenWarga.nik,
+    };
+    setInfoPerumahan(updatedInfo);
+    localStorage.setItem(STORAGE_KEYS.INFO, JSON.stringify(updatedInfo));
+
+    notifyRealtimeSync({ users: finalUsers, warga: cleanWarga, info: updatedInfo });
+
+    logAudit(
+      'PURGE_DUMMY_OPER_ADMIN',
+      'Manajemen Sistem & Warga',
+      'success',
+      `Seluruh data dummy berhasil dihapus permanen. Hak akses Admin RT 38 resmi dialihkan kepada warga acak terpilih: ${chosenWarga.namaLengkap} (${chosenWarga.blokRumah} No. ${chosenWarga.nomorRumah}, NIK: ${chosenWarga.nik}). Sesi aktif langsung berpindah.`
+    );
+
+    return {
+      success: true,
+      warga: chosenWarga,
+      user: appointedUser,
+      message: `Data dummy berhasil dibersihkan! Hak akses Admin RT 38 resmi diserahkan kepada warga: "${chosenWarga.namaLengkap}" (${chosenWarga.blokRumah} No. ${chosenWarga.nomorRumah}).`,
+    };
   };
 
   // Kop & Info Perumahan Management
@@ -1424,6 +1724,8 @@ export const RBACProvider: React.FC<{ children: React.ReactNode }> = ({ children
         cabutHakAksesAdmin,
         ubahJabatanAdmin,
         isWargaAdmin,
+        operAdminKeRandomWarga,
+        hapusSemuaDataDummyDanOperAdmin,
         updateInfoPerumahan,
         tambahWarga,
         updateWarga,

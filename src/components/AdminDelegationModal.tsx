@@ -18,6 +18,8 @@ import {
   Sparkles,
   ArrowRight,
   UserCheck2,
+  Shuffle,
+  Trash2,
 } from 'lucide-react';
 import { WargaItem, User } from '../types/rbac';
 
@@ -52,6 +54,8 @@ export const AdminDelegationModal: React.FC<AdminDelegationModalProps> = ({
     tunjukWargaSebagaiAdmin,
     cabutHakAksesAdmin,
     ubahJabatanAdmin,
+    operAdminKeRandomWarga,
+    hapusSemuaDataDummyDanOperAdmin,
     infoPerumahan,
   } = useRBAC();
 
@@ -160,6 +164,48 @@ export const AdminDelegationModal: React.FC<AdminDelegationModalProps> = ({
     });
   };
 
+  const handleOperRandomAdmin = () => {
+    setFeedbackMessage(null);
+    const result = operAdminKeRandomWarga(true);
+    if (result.success && result.warga) {
+      setFeedbackMessage({
+        type: 'success',
+        text: `🎲 Berhasil! Hak akses Admin RT 38 kini diserahkan kepada "${result.warga.namaLengkap}" (${result.warga.blokRumah} No. ${result.warga.nomorRumah}, NIK: ${result.warga.nik}). Sesi aktif langsung dialihkan.`,
+        appointedUserId: result.user?.id,
+        appointedUserName: result.warga.namaLengkap,
+      });
+    } else {
+      setFeedbackMessage({
+        type: 'error',
+        text: result.message || 'Gagal mengalihkan admin ke warga acak.',
+      });
+    }
+  };
+
+  const handleHapusDummyDanOperRandom = () => {
+    if (
+      confirm(
+        '⚠️ KONFIRMASI PEMBERSIHAN TOTAL:\n\nApakah Anda yakin ingin menghapus seluruh data dummy lama dan menyerahkan hak akses Admin RT 38 kepada salah satu warga sah yang terdata dalam database secara acak?\n\n• Seluruh data dummy akan dihapus bersih.\n• Sesi akun akan langsung berganti ke warga baru tersebut.\n• Nama Ketua RT di KOP surat resmi akan diperbarui.'
+      )
+    ) {
+      setFeedbackMessage(null);
+      const result = hapusSemuaDataDummyDanOperAdmin();
+      if (result.success && result.warga) {
+        setFeedbackMessage({
+          type: 'success',
+          text: `🗑️ Data dummy berhasil dibersihkan! Hak akses Admin RT 38 resmi diserahkan kepada warga acak: "${result.warga.namaLengkap}" (${result.warga.blokRumah} No. ${result.warga.nomorRumah}).`,
+          appointedUserId: result.user?.id,
+          appointedUserName: result.warga.namaLengkap,
+        });
+      } else {
+        setFeedbackMessage({
+          type: 'error',
+          text: result.message || 'Gagal membersihkan dummy dan mengoper admin.',
+        });
+      }
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-xs overflow-y-auto animate-in fade-in">
       <div className="relative w-full max-w-4xl bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden text-slate-800 my-auto flex flex-col max-h-[92vh]">
@@ -194,6 +240,50 @@ export const AdminDelegationModal: React.FC<AdminDelegationModalProps> = ({
 
         {/* Modal Body */}
         <div className="p-5 sm:p-6 overflow-y-auto space-y-6 flex-1 text-xs">
+          {/* QUICK ACTIONS BANNER: OPER ADMIN RANDOM & HAPUS DUMMY */}
+          <div className="p-4 rounded-2xl bg-gradient-to-r from-purple-900 via-indigo-900 to-slate-900 text-white shadow-md border border-purple-800/40 space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 bg-purple-500/30 rounded-xl border border-purple-400/40 text-amber-300 shrink-0">
+                  <Shuffle className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="font-extrabold text-sm text-white flex items-center gap-2">
+                    <span>Pengalihan Hak Admin Otomatis</span>
+                    <span className="px-2 py-0.5 rounded-full bg-purple-400/20 text-purple-200 border border-purple-400/30 text-[10px] font-bold">
+                      {wargaList.length} Warga Terdaftar
+                    </span>
+                  </h4>
+                  <p className="text-[11px] text-purple-200/80">
+                    Sistem dapat menyerahkan hak administrator secara acak kepada siapa saja warga sah di database RT 38.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={handleOperRandomAdmin}
+                  className="px-3.5 py-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black rounded-xl text-xs flex items-center gap-1.5 shadow-md hover:scale-102 transition-all cursor-pointer"
+                  title="Pilih satu warga secara acak dari database dan jadikan Admin RT"
+                >
+                  <Shuffle className="w-4 h-4 text-slate-950" />
+                  <span>🎲 Oper Admin ke Warga Acak</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleHapusDummyDanOperRandom}
+                  className="px-3 py-2 bg-rose-600/90 hover:bg-rose-600 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-md border border-rose-400/30 hover:scale-102 transition-all cursor-pointer"
+                  title="Hapus seluruh data dummy lama dan oper admin ke warga acak"
+                >
+                  <Trash2 className="w-4 h-4 text-rose-200" />
+                  <span>🗑️ Hapus Dummy & Oper Admin</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
           {/* Feedback Banner */}
           {feedbackMessage && (
             <div

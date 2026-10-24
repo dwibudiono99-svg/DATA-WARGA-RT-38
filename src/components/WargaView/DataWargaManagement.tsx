@@ -35,6 +35,7 @@ import {
   QrCode,
   Zap,
   Crown,
+  Shuffle,
 } from 'lucide-react';
 import { FormPendataanModelKK } from '../FormPendataanModelKK';
 import { AdminDelegationModal } from '../AdminDelegationModal';
@@ -66,6 +67,8 @@ export const DataWargaManagement: React.FC<DataWargaManagementProps> = ({ onOpen
     canExecute,
     infoPerumahan,
     isWargaAdmin,
+    operAdminKeRandomWarga,
+    hapusSemuaDataDummyDanOperAdmin,
   } = useRBAC();
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -544,11 +547,39 @@ export const DataWargaManagement: React.FC<DataWargaManagementProps> = ({ onOpen
               setAppointingWargaId(null);
               setIsAdminDelegationOpen(true);
             }}
-            className="flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-black rounded-xl text-xs transition-all shadow-md shadow-amber-500/20 hover:scale-102 cursor-pointer border border-amber-400"
+            className="flex items-center gap-1.5 px-3.5 py-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-black rounded-xl text-xs transition-all shadow-md shadow-amber-500/20 hover:scale-102 cursor-pointer border border-amber-400"
             title="Kelola hak akses dan tunjuk siapa saja warga menjadi Administrator / Pengurus RT"
           >
             <Crown className="w-4 h-4 text-slate-950" />
             <span>👑 Penunjukan Admin RT</span>
+          </button>
+
+          <button
+            onClick={() => {
+              if (confirm('Apakah Anda yakin ingin menyerahkan hak akses Admin RT secara acak ke salah satu warga dari database? Sesi aktif akan langsung berpindah.')) {
+                const res = operAdminKeRandomWarga(true);
+                alert(res.message);
+              }
+            }}
+            className="flex items-center gap-1.5 px-3 py-2 bg-purple-700 hover:bg-purple-800 text-white font-bold rounded-xl text-xs transition-all shadow-md shadow-purple-600/20 hover:scale-102 cursor-pointer"
+            title="Serahkan hak akses Administrator secara acak ke salah satu warga di database"
+          >
+            <Shuffle className="w-4 h-4 text-amber-300" />
+            <span>🎲 Oper Admin Acak</span>
+          </button>
+
+          <button
+            onClick={() => {
+              if (confirm('PERINGATAN: Seluruh data dummy lama akan dibersihkan permanen, dan hak akses Admin RT 38 akan diserahkan kepada salah satu warga sah secara acak. Lanjutkan?')) {
+                const res = hapusSemuaDataDummyDanOperAdmin();
+                alert(res.message);
+              }
+            }}
+            className="flex items-center gap-1.5 px-3 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-300 rounded-xl font-bold text-xs transition-all cursor-pointer"
+            title="Hapus seluruh data dummy dan serahkan hak akses Admin ke warga acak"
+          >
+            <Trash2 className="w-4 h-4 text-rose-600" />
+            <span>🗑️ Hapus Dummy & Oper Admin</span>
           </button>
 
           <button

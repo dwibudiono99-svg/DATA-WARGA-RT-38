@@ -185,6 +185,10 @@ function AppContent() {
         isOpen={isPosterModalOpen}
         onClose={() => setIsPosterModalOpen(false)}
       />
+      <AdminDelegationModal
+        isOpen={isAdminDelegationOpen}
+        onClose={() => setIsAdminDelegationOpen(false)}
+      />
 
       {/* Footer */}
       <footer className="mt-auto border-t border-slate-200 bg-white py-6">

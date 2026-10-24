@@ -22,6 +22,8 @@ import {
   ShieldCheck,
   FileSpreadsheet,
   Crown,
+  Shuffle,
+  Trash2,
 } from 'lucide-react';
 
 interface NavbarProps {
@@ -52,6 +54,8 @@ export const Navbar: React.FC<NavbarProps> = ({
     pengumumanList,
     notifikasiList,
     resetAllToDefault,
+    operAdminKeRandomWarga,
+    hapusSemuaDataDummyDanOperAdmin,
   } = useRBAC();
 
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
@@ -463,6 +467,36 @@ export const Navbar: React.FC<NavbarProps> = ({
                         <span>👑 Tunjuk & Kelola Admin RT</span>
                       </button>
                     )}
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsUserMenuOpen(false);
+                        if (confirm('Apakah Anda ingin menyerahkan hak akses Admin RT ke salah satu warga acak dari database? Sesi aktif akan langsung berpindah.')) {
+                          const res = operAdminKeRandomWarga(true);
+                          alert(res.message);
+                        }
+                      }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-purple-900 bg-purple-50 hover:bg-purple-100 transition-colors font-bold"
+                    >
+                      <Shuffle className="w-4 h-4 text-purple-600" />
+                      <span>🎲 Oper Hak Admin ke Warga Acak</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsUserMenuOpen(false);
+                        if (confirm('PERINGATAN: Seluruh data dummy lama akan dibersihkan permanen, dan hak akses Admin RT 38 akan diserahkan kepada salah satu warga sah secara acak. Lanjutkan?')) {
+                          const res = hapusSemuaDataDummyDanOperAdmin();
+                          alert(res.message);
+                        }
+                      }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-rose-800 bg-rose-50 hover:bg-rose-100 transition-colors font-bold"
+                    >
+                      <Trash2 className="w-4 h-4 text-rose-600" />
+                      <span>🗑️ Hapus Dummy & Oper Admin</span>
+                    </button>
 
                     <button
                       type="button"
