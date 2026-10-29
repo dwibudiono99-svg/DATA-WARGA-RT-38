@@ -51,6 +51,7 @@ import {
   StatusPernikahan,
   HubunganKeluarga,
   AnggotaKeluargaKK,
+  formatAlamatDomisili,
 } from '../../types/rbac';
 
 interface DataWargaManagementProps {
@@ -258,7 +259,8 @@ export const DataWargaManagement: React.FC<DataWargaManagementProps> = ({ onOpen
       noKitasKitap: '',
       namaAyah: '',
       namaIbu: '',
-      alamatKtp: `${infoPerumahan.namaPerumahan} Blok AE No. 01, ${infoPerumahan.rtRw} Kel. ${infoPerumahan.kelurahan}`,
+      alamatKtp: 'Jl. Raya Mastrip Sepanjang, Kel. Sepanjang, Kec. Taman, Kab. Sidoarjo',
+      alamatDomisili: formatAlamatDomisili('Blok AE', '01'),
       noHp: '+62 81' + Math.floor(10000000 + Math.random() * 90000000),
       email: '',
       jumlahAnggotaKeluarga: 3,
@@ -330,6 +332,7 @@ export const DataWargaManagement: React.FC<DataWargaManagementProps> = ({ onOpen
 
     tambahWarga({
       ...formData,
+      alamatDomisili: formData.alamatDomisili || formatAlamatDomisili(formData.blokRumah, formData.nomorRumah),
       anggotaKeluarga: updatedAnggota,
       jumlahAnggotaKeluarga: updatedAnggota.length,
     });
@@ -354,7 +357,7 @@ export const DataWargaManagement: React.FC<DataWargaManagementProps> = ({ onOpen
       statusHunian: warga.statusHunian,
       statusKeluarga: warga.statusKeluarga,
       jenisKelamin: warga.jenisKelamin,
-      tempatLahir: warga.tempatLahir || 'Depok',
+      tempatLahir: warga.tempatLahir || 'Sidoarjo',
       tanggalLahir: warga.tanggalLahir || '1985-01-01',
       agama: warga.agama || 'Islam',
       pendidikan: warga.pendidikan || 'Diploma IV / Strata I',
@@ -369,6 +372,7 @@ export const DataWargaManagement: React.FC<DataWargaManagementProps> = ({ onOpen
       namaAyah: warga.namaAyah || '',
       namaIbu: warga.namaIbu || '',
       alamatKtp: warga.alamatKtp || `${infoPerumahan.namaPerumahan} ${warga.blokRumah} No. ${warga.nomorRumah}`,
+      alamatDomisili: warga.alamatDomisili || formatAlamatDomisili(warga.blokRumah, warga.nomorRumah),
       noHp: warga.noHp,
       email: warga.email,
       jumlahAnggotaKeluarga: warga.jumlahAnggotaKeluarga,
@@ -390,6 +394,7 @@ export const DataWargaManagement: React.FC<DataWargaManagementProps> = ({ onOpen
 
     updateWarga(editingWarga.id, {
       ...formData,
+      alamatDomisili: formData.alamatDomisili || formatAlamatDomisili(formData.blokRumah, formData.nomorRumah),
       jumlahAnggotaKeluarga: count,
     });
     setEditingWarga(null);
@@ -803,8 +808,14 @@ export const DataWargaManagement: React.FC<DataWargaManagementProps> = ({ onOpen
                         <div className="font-semibold text-slate-900">
                           {warga.blokRumah} No. {warga.nomorRumah}
                         </div>
+                        <div
+                          className="text-[10px] text-slate-500 font-medium line-clamp-1 max-w-[220px]"
+                          title={warga.alamatDomisili || formatAlamatDomisili(warga.blokRumah, warga.nomorRumah)}
+                        >
+                          {warga.alamatDomisili || formatAlamatDomisili(warga.blokRumah, warga.nomorRumah)}
+                        </div>
                         <span
-                          className={`inline-block text-[10px] px-2 py-0.2 rounded-md font-bold ${
+                          className={`inline-block mt-0.5 text-[10px] px-2 py-0.2 rounded-md font-bold ${
                             warga.statusHunian === 'Tetap'
                               ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
                               : 'bg-amber-50 text-amber-800 border border-amber-200'

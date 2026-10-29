@@ -29,7 +29,7 @@ import {
   MessageSquare,
   Send,
 } from 'lucide-react';
-import { SuratItem, NotifikasiSimulasi } from '../../types/rbac';
+import { SuratItem, NotifikasiSimulasi, formatAlamatDomisili } from '../../types/rbac';
 import { EditKopRTModal } from '../EditKopRTModal';
 import { JenisSuratManagerModal } from '../JenisSuratManagerModal';
 import { ModalSimulasiNotifikasi } from '../ModalSimulasiNotifikasi';
@@ -1003,7 +1003,7 @@ export const LayananSuratRT: React.FC = () => {
 
                 {/* 4. Kalimat Pembuka Resmi */}
                 <p className="text-xs leading-relaxed text-justify indent-8">
-                  Yang bertanda tangan di bawah ini, Ketua Rukun Tetangga (RT) {infoPerumahan.rtRw} Kelurahan {infoPerumahan.kelurahan}, Kecamatan {infoPerumahan.kecamatan}, {infoPerumahan.kota}, Provinsi {infoPerumahan.provinsi || 'Jawa Barat'}, dengan ini menerangkan bahwa:
+                  Yang bertanda tangan di bawah ini, Ketua Rukun Tetangga (RT) {infoPerumahan.rtRw} Kelurahan {infoPerumahan.kelurahan}, Kecamatan {infoPerumahan.kecamatan}, {infoPerumahan.kota}, Provinsi {infoPerumahan.provinsi || 'Jawa Timur'}, dengan ini menerangkan bahwa:
                 </p>
 
                 {/* 5. Tabel Identitas Pemohon Sesuai Isian Kartu Keluarga (KK) */}
@@ -1032,7 +1032,7 @@ export const LayananSuratRT: React.FC = () => {
                   <div className="grid grid-cols-3 py-0.5 border-b border-slate-100">
                     <span className="text-slate-600">4. Tempat, Tanggal Lahir</span>
                     <span className="col-span-2 text-slate-900">
-                      : {pemohonWarga?.tempatLahir || 'Depok'}, {pemohonWarga?.tanggalLahir || '1985-05-12'}
+                      : {pemohonWarga?.tempatLahir || 'Sidoarjo'}, {pemohonWarga?.tanggalLahir || '1985-05-12'}
                     </span>
                   </div>
 
@@ -1067,14 +1067,14 @@ export const LayananSuratRT: React.FC = () => {
                   <div className="grid grid-cols-3 py-0.5 border-b border-slate-100">
                     <span className="text-slate-600">9. Alamat KTP</span>
                     <span className="col-span-2 text-slate-800">
-                      : {pemohonWarga?.alamatKtp || `${infoPerumahan.namaPerumahan} ${viewingLetter.blokRumah} No. ${viewingLetter.nomorRumah}`}
+                      : {pemohonWarga?.alamatKtp || `Jl. Raya Mastrip Sepanjang No. 42, Kel. Sepanjang, Kec. Taman, Kab. Sidoarjo`}
                     </span>
                   </div>
 
                   <div className="grid grid-cols-3 py-0.5">
                     <span className="text-slate-600">10. Alamat Domisili Sekarang</span>
                     <span className="col-span-2 font-medium text-slate-950">
-                      : {infoPerumahan.namaPerumahan} {viewingLetter.blokRumah} No. {viewingLetter.nomorRumah}, {infoPerumahan.rtRw}, Kel. {infoPerumahan.kelurahan}
+                      : {pemohonWarga?.alamatDomisili || formatAlamatDomisili(viewingLetter.blokRumah, viewingLetter.nomorRumah)}
                     </span>
                   </div>
                 </div>

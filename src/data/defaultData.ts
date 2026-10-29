@@ -202,7 +202,7 @@ export const DEFAULT_ROLE_PERMISSIONS: RolePermissions = {
 };
 
 export const INITIAL_INFO_PERUMAHAN: InfoPerumahan = {
-  namaPerumahan: 'Perumahan Griyo Taman Asri',
+  namaPerumahan: 'Perum Griyo Taman Asri, Cluster Sunsiviera',
   rtRw: 'RT 38 / RW 09',
   kelurahan: 'Sepanjang',
   kecamatan: 'Taman',
@@ -227,7 +227,7 @@ export const INITIAL_INFO_PERUMAHAN: InfoPerumahan = {
   headerBaris1: 'PEMERINTAH KABUPATEN SIDOARJO',
   headerBaris2: 'KECAMATAN TAMAN - KELURAHAN SEPANJANG',
   headerBaris3: 'RUKUN TETANGGA 38 / RUKUN WARGA 09',
-  headerBaris4: 'PERUMAHAN GRIYO TAMAN ASRI',
+  headerBaris4: 'PERUM GRIYO TAMAN ASRI, CLUSTER SUNSIVIERA',
   garisKopGanda: true,
   stempelResmiAktif: true,
   logoSize: 'standard',
@@ -466,7 +466,7 @@ export const INITIAL_WARGA: WargaItem[] = [
     catatanKhusus: 'Warga Tetap RT 38 Sepanjang Taman Sidoarjo',
     statusVerifikasiKK: 'Terverifikasi',
     alamatKtp: 'Perumahan Griyo Taman Asri Blok AE No. 01, RT 38 / RW 09 Sepanjang Taman Sidoarjo',
-    alamatDomisili: 'Perumahan Griyo Taman Asri Blok AE No. 01, RT 38 / RW 09 Sepanjang Taman Sidoarjo',
+    alamatDomisili: 'Perum Griyo Taman Asri, Cluster Sunsiviera Blok AE No. 01, Kec. Taman, Kel. Sepanjang, Kab. Sidoarjo.',
     statusDomisiliSamaDenganKk: true,
     anggotaKeluarga: [
       {
@@ -566,7 +566,7 @@ export const INITIAL_WARGA: WargaItem[] = [
     catatanKhusus: 'Warga Tetap RT 38 Sepanjang Taman Sidoarjo',
     statusVerifikasiKK: 'Terverifikasi',
     alamatKtp: 'Perumahan Griyo Taman Asri Blok AE No. 02, RT 38 / RW 09 Sepanjang Taman Sidoarjo',
-    alamatDomisili: 'Perumahan Griyo Taman Asri Blok AE No. 02, RT 38 / RW 09 Sepanjang Taman Sidoarjo',
+    alamatDomisili: 'Perum Griyo Taman Asri, Cluster Sunsiviera Blok AE No. 02, Kec. Taman, Kel. Sepanjang, Kab. Sidoarjo.',
     statusDomisiliSamaDenganKk: true,
     anggotaKeluarga: [
       {
@@ -649,7 +649,7 @@ export const INITIAL_WARGA: WargaItem[] = [
     catatanKhusus: 'Warga Tetap RT 38 Sepanjang Taman Sidoarjo',
     statusVerifikasiKK: 'Terverifikasi',
     alamatKtp: 'Perumahan Griyo Taman Asri Blok AE No. 03, RT 38 / RW 09 Sepanjang Taman Sidoarjo',
-    alamatDomisili: 'Perumahan Griyo Taman Asri Blok AE No. 03, RT 38 / RW 09 Sepanjang Taman Sidoarjo',
+    alamatDomisili: 'Perum Griyo Taman Asri, Cluster Sunsiviera Blok AE No. 03, Kec. Taman, Kel. Sepanjang, Kab. Sidoarjo.',
     statusDomisiliSamaDenganKk: true,
     anggotaKeluarga: [
       {
@@ -732,7 +732,7 @@ export const INITIAL_WARGA: WargaItem[] = [
     catatanKhusus: 'Warga Tetap RT 38 Sepanjang Taman Sidoarjo',
     statusVerifikasiKK: 'Terverifikasi',
     alamatKtp: 'Perumahan Griyo Taman Asri Blok DB No. 01, RT 38 / RW 09 Sepanjang Taman Sidoarjo',
-    alamatDomisili: 'Perumahan Griyo Taman Asri Blok DB No. 01, RT 38 / RW 09 Sepanjang Taman Sidoarjo',
+    alamatDomisili: 'Perum Griyo Taman Asri, Cluster Sunsiviera Blok DB No. 01, Kec. Taman, Kel. Sepanjang, Kab. Sidoarjo.',
     statusDomisiliSamaDenganKk: true,
     anggotaKeluarga: [
       {
@@ -815,7 +815,7 @@ export const INITIAL_WARGA: WargaItem[] = [
     catatanKhusus: 'Warga Tetap RT 38 Sepanjang Taman Sidoarjo',
     statusVerifikasiKK: 'Terverifikasi',
     alamatKtp: 'Perumahan Griyo Taman Asri Blok DB No. 02, RT 38 / RW 09 Sepanjang Taman Sidoarjo',
-    alamatDomisili: 'Perumahan Griyo Taman Asri Blok DB No. 02, RT 38 / RW 09 Sepanjang Taman Sidoarjo',
+    alamatDomisili: 'Perum Griyo Taman Asri, Cluster Sunsiviera Blok DB No. 02, Kec. Taman, Kel. Sepanjang, Kab. Sidoarjo.',
     statusDomisiliSamaDenganKk: true,
     anggotaKeluarga: [
       {

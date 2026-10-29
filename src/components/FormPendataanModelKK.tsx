@@ -38,6 +38,7 @@ import {
   StatusPernikahan,
   HubunganKeluarga,
   StatusVerifikasiKK,
+  formatAlamatDomisili,
 } from '../types/rbac';
 
 interface FormPendataanModelKKProps {
@@ -175,7 +176,7 @@ export const FormPendataanModelKK: React.FC<FormPendataanModelKKProps> = ({
         'Jl. Raya Mastrip Sepanjang No. 42, Kel. Sepanjang, Kec. Taman, Kab. Sidoarjo';
       const alamatDomisili =
         anyData.alamatDomisili ||
-        `${infoPerumahan.namaPerumahan} ${blok} No. ${nomor}, ${infoPerumahan.rtRw} ${infoPerumahan.kelurahan} ${infoPerumahan.kecamatan}`;
+        formatAlamatDomisili(blok, nomor);
 
       const rawMembers = Array.isArray(anyData.anggotaKeluarga) ? anyData.anggotaKeluarga : [];
       const parsedMembers: AnggotaKeluargaKK[] =
@@ -789,7 +790,14 @@ export const FormPendataanModelKK: React.FC<FormPendataanModelKKProps> = ({
                     <label className="block font-bold text-emerald-950 mb-0.5">Blok Rumah di Lingkungan</label>
                     <select
                       value={formData.blokRumah}
-                      onChange={(e) => setFormData({ ...formData, blokRumah: e.target.value as BlokRumah })}
+                      onChange={(e) => {
+                        const newBlok = e.target.value as BlokRumah;
+                        setFormData({
+                          ...formData,
+                          blokRumah: newBlok,
+                          alamatDomisili: formatAlamatDomisili(newBlok, formData.nomorRumah),
+                        });
+                      }}
                       className="w-full px-3 py-1.5 bg-white border border-emerald-300 rounded-xl font-bold text-emerald-900"
                     >
                       <option value="Blok AE">Blok AE</option>
@@ -811,8 +819,15 @@ export const FormPendataanModelKK: React.FC<FormPendataanModelKKProps> = ({
                       type="text"
                       required
                       value={formData.nomorRumah}
-                      onChange={(e) => setFormData({ ...formData, nomorRumah: e.target.value })}
-                      placeholder="Contoh: AE-01"
+                      onChange={(e) => {
+                        const newNomor = e.target.value;
+                        setFormData({
+                          ...formData,
+                          nomorRumah: newNomor,
+                          alamatDomisili: formatAlamatDomisili(formData.blokRumah, newNomor),
+                        });
+                      }}
+                      placeholder="Contoh: 01 atau AE-01"
                       className="w-full px-3 py-1.5 bg-white border border-emerald-300 rounded-xl font-extrabold text-emerald-950"
                     />
                   </div>
@@ -846,12 +861,27 @@ export const FormPendataanModelKK: React.FC<FormPendataanModelKKProps> = ({
                 </div>
 
                 <div>
-                  <label className="block font-bold text-emerald-950 mb-0.5">Alamat Domisili Lengkap KK</label>
+                  <div className="flex items-center justify-between mb-0.5">
+                    <label className="block font-bold text-emerald-950">Alamat Domisili Lengkap KK</label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFormData({
+                          ...formData,
+                          alamatDomisili: formatAlamatDomisili(formData.blokRumah, formData.nomorRumah),
+                        });
+                      }}
+                      className="text-[10px] text-emerald-700 hover:text-emerald-900 font-bold underline cursor-pointer"
+                      title="Format otomatis sesuai standar Perum Griyo Taman Asri, Cluster Sunsiviera"
+                    >
+                      Standar Sunsiviera
+                    </button>
+                  </div>
                   <input
                     type="text"
                     value={formData.alamatDomisili || ''}
                     onChange={(e) => setFormData({ ...formData, alamatDomisili: e.target.value })}
-                    placeholder={`Perumahan Griyo Taman Asri ${formData.blokRumah} No. ${formData.nomorRumah}, ${infoPerumahan.rtRw} Sepanjang Taman Sidoarjo`}
+                    placeholder={formatAlamatDomisili(formData.blokRumah, formData.nomorRumah)}
                     className="w-full px-3 py-1.5 bg-white border border-emerald-300 rounded-xl text-emerald-950 font-medium"
                   />
                 </div>

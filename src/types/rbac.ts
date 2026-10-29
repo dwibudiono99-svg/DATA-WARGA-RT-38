@@ -407,3 +407,16 @@ export interface KegiatanWarga {
   createdAt: string;
 }
 
+/**
+ * Standardized Domicile Address Generator for residents of Perum Griyo Taman Asri, Cluster Sunsiviera
+ */
+export function formatAlamatDomisili(blok?: string, nomor?: string): string {
+  const cleanBlok = (blok || 'AE').replace(/^Blok\s+/i, '').trim();
+  let cleanNomor = (nomor || '01').trim();
+  const prefixRegex = new RegExp(`^${cleanBlok}-?`, 'i');
+  if (prefixRegex.test(cleanNomor) && cleanNomor.length > cleanBlok.length) {
+    cleanNomor = cleanNomor.replace(prefixRegex, '').trim();
+  }
+  return `Perum Griyo Taman Asri, Cluster Sunsiviera Blok ${cleanBlok} No. ${cleanNomor}, Kec. Taman, Kel. Sepanjang, Kab. Sidoarjo.`;
+}
+

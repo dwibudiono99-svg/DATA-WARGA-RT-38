@@ -18,6 +18,7 @@ import {
   PetugasKeamanan,
   NotifikasiSimulasi,
   KegiatanWarga,
+  formatAlamatDomisili,
 } from '../types/rbac';
 import {
   DEFAULT_ROLE_PERMISSIONS,
@@ -249,20 +250,30 @@ export const RBACProvider: React.FC<{ children: React.ReactNode }> = ({ children
         );
         const rawList = filtered.length > 0 ? filtered : INITIAL_WARGA;
 
-        // Ensure every item has a unique ID across the list
+        // Ensure every item has a unique ID across the list and standardized alamatDomisili
         const seenIds = new Set<string>();
         const uniqueList: WargaItem[] = [];
         let hasDuplicate = false;
         for (let idx = 0; idx < rawList.length; idx++) {
           const item = rawList[idx];
+          const standardDomisili = formatAlamatDomisili(item.blokRumah, item.nomorRumah);
+          const needsAddressUpdate = !item.alamatDomisili || !item.alamatDomisili.includes('Cluster Sunsiviera');
+          if (needsAddressUpdate) {
+            hasDuplicate = true;
+          }
+          const itemWithAddress: WargaItem = {
+            ...item,
+            alamatDomisili: needsAddressUpdate ? standardDomisili : item.alamatDomisili,
+          };
+
           if (!item.id || seenIds.has(item.id)) {
             hasDuplicate = true;
             const uniqueId = `wrg_${Date.now()}_${idx}_${Math.random().toString(36).substring(2, 8)}`;
             seenIds.add(uniqueId);
-            uniqueList.push({ ...item, id: uniqueId });
+            uniqueList.push({ ...itemWithAddress, id: uniqueId });
           } else {
             seenIds.add(item.id);
-            uniqueList.push(item);
+            uniqueList.push(itemWithAddress);
           }
         }
         if (hasDuplicate) {
@@ -470,23 +481,31 @@ export const RBACProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
 
-  // Self-healing: Ensure no duplicate IDs exist in wargaList or localStorage
+  // Self-healing: Ensure no duplicate IDs exist and alamatDomisili is standardized
   useEffect(() => {
     setWargaList((prev) => {
       const seen = new Set<string>();
-      let hasDuplicate = false;
+      let hasChanges = false;
       const cleanList = prev.map((w, idx) => {
-        if (!w.id || seen.has(w.id)) {
-          hasDuplicate = true;
+        let currentW = { ...w };
+        const standardAddress = formatAlamatDomisili(w.blokRumah, w.nomorRumah);
+        if (!w.alamatDomisili || !w.alamatDomisili.includes('Cluster Sunsiviera')) {
+          hasChanges = true;
+          currentW.alamatDomisili = standardAddress;
+        }
+
+        if (!currentW.id || seen.has(currentW.id)) {
+          hasChanges = true;
           const newId = `wrg_${Date.now()}_${idx}_${Math.random().toString(36).substring(2, 8)}`;
           seen.add(newId);
-          return { ...w, id: newId };
+          currentW.id = newId;
+        } else {
+          seen.add(currentW.id);
         }
-        seen.add(w.id);
-        return w;
+        return currentW;
       });
 
-      if (hasDuplicate) {
+      if (hasChanges) {
         localStorage.setItem(STORAGE_KEYS.WARGA, JSON.stringify(cleanList));
         return cleanList;
       }
@@ -1058,9 +1077,11 @@ export const RBACProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const tambahWarga = (data: Omit<WargaItem, 'id'> & { id?: string }) => {
     if (!canExecute('warga:create', 'Menambah Data Warga Baru', 'Data Warga')) return;
 
+    const standardDomisili = formatAlamatDomisili(data.blokRumah, data.nomorRumah);
     const newWarga: WargaItem = {
       ...data,
       id: data.id || `wrg_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`,
+      alamatDomisili: data.alamatDomisili || standardDomisili,
     };
 
     setWargaList((prev) => {
@@ -1081,8 +1102,16 @@ export const RBACProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     if (!canExecute(requiredPermission, 'Memperbarui Data Warga', 'Data Warga')) return false;
 
+    const finalBlok = updates.blokRumah || target.blokRumah;
+    const finalNomor = updates.nomorRumah || target.nomorRumah;
+    const autoDomisili = formatAlamatDomisili(finalBlok, finalNomor);
+    const resolvedUpdates: Partial<WargaItem> = {
+      ...updates,
+      alamatDomisili: updates.alamatDomisili || (updates.blokRumah || updates.nomorRumah ? autoDomisili : target.alamatDomisili || autoDomisili),
+    };
+
     setWargaList((prev) => {
-      const updated = prev.map((w) => (w.id === id ? { ...w, ...updates } : w));
+      const updated = prev.map((w) => (w.id === id ? { ...w, ...resolvedUpdates } : w));
       localStorage.setItem(STORAGE_KEYS.WARGA, JSON.stringify(updated));
       return updated;
     });

@@ -13,7 +13,7 @@ import {
   Trash2,
   Lock,
 } from 'lucide-react';
-import { WargaItem } from '../../types/rbac';
+import { WargaItem, formatAlamatDomisili } from '../../types/rbac';
 
 export const DataRumahSaya: React.FC = () => {
   const { currentUser, wargaList, updateWarga } = useRBAC();
@@ -92,12 +92,14 @@ export const DataRumahSaya: React.FC = () => {
             </div>
             <div>
               <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-800">
-                Alamat Kavling Perumahan
+                Alamat Domisili Resmi Warga
               </span>
               <h3 className="text-lg font-black text-slate-900">
                 {currentUser.blokRumah} Nomor {currentUser.nomorRumah}
               </h3>
-              <p className="text-xs text-slate-600">RT 04 / RW 09 Kelurahan Sukamaju Indah</p>
+              <p className="text-xs text-slate-700 font-medium">
+                {myWarga.alamatDomisili || formatAlamatDomisili(currentUser.blokRumah, currentUser.nomorRumah)}
+              </p>
             </div>
           </div>
 

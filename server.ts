@@ -106,6 +106,16 @@ const KABUPATEN_MAP: Record<string, { kab: string; kec: string }> = {
   '3471': { kab: 'Kota Yogyakarta', kec: 'Kecamatan Gondomanan' },
 };
 
+function formatAlamatDomisiliServer(blok?: string, nomor?: string): string {
+  const cleanBlok = (blok || 'AE').replace(/^Blok\s+/i, '').trim();
+  let cleanNomor = (nomor || '01').trim();
+  const prefixRegex = new RegExp(`^${cleanBlok}-?`, 'i');
+  if (prefixRegex.test(cleanNomor) && cleanNomor.length > cleanBlok.length) {
+    cleanNomor = cleanNomor.replace(prefixRegex, '').trim();
+  }
+  return `Perum Griyo Taman Asri, Cluster Sunsiviera Blok ${cleanBlok} No. ${cleanNomor}, Kec. Taman, Kel. Sepanjang, Kab. Sidoarjo.`;
+}
+
 /**
  * Pure Real Document OCR Extraction using Gemini AI Vision
  * Reads actual text printed on the image without fabricating fake citizens.
@@ -306,9 +316,9 @@ Jika gambar ini sama sekali bukan Kartu Keluarga atau tidak dapat dibaca teksnya
     nikKepalaKeluarga: nikKepala,
     alamatKtp: parsed.alamatKtp || parsed.alamat_ktp || parsed.alamat || 'Alamat Terdaftar Dokumen',
     alamatDomisili:
-      parsed.alamatDomisili ||
-      parsed.alamat_domisili ||
-      'Perumahan Griyo Taman Asri, RT 38 / RW 09 Sepanjang Taman Sidoarjo',
+      parsed.alamatDomisili && parsed.alamatDomisili.includes('Cluster Sunsiviera')
+        ? parsed.alamatDomisili
+        : formatAlamatDomisiliServer(parsed.estimasiBlok || 'Blok AE', parsed.estimasiNomor || '01'),
     rtRw: parsed.rtRw || parsed.rt_rw || 'RT 38 / RW 09',
     kelurahan: parsed.kelurahan || parsed.desa || 'Sepanjang',
     kecamatan: parsed.kecamatan || 'Taman',
@@ -382,7 +392,7 @@ function decodeNikAccurately(nikInput?: string, kkInput?: string, namaInput?: st
     namaKepalaKeluarga: nama,
     nikKepalaKeluarga: cleanNik,
     alamatKtp: `${kabInfo.kec}, ${kabInfo.kab}, Provinsi ${provinsi}`,
-    alamatDomisili: `Perumahan Griyo Taman Asri, RT 38 / RW 09 Sepanjang Taman Sidoarjo`,
+    alamatDomisili: formatAlamatDomisiliServer('Blok AE', '01'),
     statusDomisiliSamaDenganKk: false,
     keteranganDomisiliKk: 'Warga terdaftar sah dengan data kependudukan SIAK Kemendagri',
     rtRw: 'RT 38 / RW 09',
@@ -410,7 +420,7 @@ function decodeNikAccurately(nikInput?: string, kkInput?: string, namaInput?: st
         statusHubunganDalamKeluarga: 'Kepala Keluarga',
         statusPerkawinan: 'Kawin Tercatat',
         alamatKtp: `${kabInfo.kec}, ${kabInfo.kab}, Provinsi ${provinsi}`,
-        alamatDomisili: `Perumahan Griyo Taman Asri, RT 38 / RW 09 Sepanjang Taman Sidoarjo`,
+        alamatDomisili: formatAlamatDomisiliServer('Blok AE', '01'),
         statusDomisiliSamaDenganKK: true,
         statusTinggalDomisili: 'Tinggal Bersama di RT',
         keteranganDomisili: 'Tercatat sesuai dokumen kependudukan resmi',

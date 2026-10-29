@@ -20,7 +20,7 @@ import {
   Trash2,
   FileUp,
 } from 'lucide-react';
-import { BlokRumah, StatusHunian } from '../types/rbac';
+import { BlokRumah, StatusHunian, formatAlamatDomisili } from '../types/rbac';
 import { SAMPLE_KK_DOCUMENTS, renderKKDocumentToDataUrl } from '../utils/kkDocumentGenerator';
 
 export interface ExtractedKKData {
@@ -926,9 +926,9 @@ export const ScanKKModal: React.FC<ScanKKModalProps> = ({
       email: '',
       alamatKtp: kkData.alamatKtp || kkData.alamat || 'Alamat Asal KTP',
       alamatDomisili:
-        kkData.alamatDomisili && !kkData.alamatDomisili.includes('AE-01')
+        kkData.alamatDomisili && kkData.alamatDomisili.includes('Cluster Sunsiviera')
           ? kkData.alamatDomisili
-          : `${infoPerumahan.namaPerumahan} ${finalBlok} No. ${finalNomor}, ${infoPerumahan.rtRw} Sepanjang Taman Sidoarjo`,
+          : formatAlamatDomisili(finalBlok, finalNomor),
       statusDomisiliSamaDenganKk: kkData.statusDomisiliSamaDenganKk ?? false,
       jumlahAnggotaKeluarga: members.length || 1,
       tanggalMasuk: new Date().toISOString().split('T')[0],
@@ -951,7 +951,7 @@ export const ScanKKModal: React.FC<ScanKKModalProps> = ({
         namaAyah: 'Ayah',
         namaIbu: 'Ibu',
         alamatKtp: ak.alamatKtp || kkData.alamatKtp || kkData.alamat,
-        alamatDomisili: ak.alamatDomisili || `${infoPerumahan.namaPerumahan} ${finalBlok} No. ${finalNomor}, ${infoPerumahan.rtRw} Sepanjang Taman Sidoarjo`,
+        alamatDomisili: formatAlamatDomisili(finalBlok, finalNomor),
         statusDomisiliSamaDenganKK: ak.statusDomisiliSamaDenganKK ?? true,
         statusTinggalDomisili: (ak.statusTinggalDomisili as any) || 'Tinggal Bersama di RT',
         keteranganDomisili: ak.keteranganDomisili || 'Tercatat sesuai dokumen kependudukan resmi',
