@@ -10,7 +10,25 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+
+// Parse CLI arguments (--port 3000 --host 0.0.0.0) with fallback
+let PORT = 3000;
+let HOST = '0.0.0.0';
+
+for (let i = 2; i < process.argv.length; i++) {
+  if (process.argv[i] === '--port' && process.argv[i + 1]) {
+    const p = parseInt(process.argv[i + 1], 10);
+    if (!isNaN(p)) PORT = p;
+  }
+  if (process.argv[i] === '--host' && process.argv[i + 1]) {
+    HOST = process.argv[i + 1];
+  }
+}
+
+if (!process.argv.includes('--port') && process.env.NODE_ENV === 'production' && process.env.PORT) {
+  const envPort = parseInt(process.env.PORT, 10);
+  if (!isNaN(envPort)) PORT = envPort;
+}
 
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
@@ -728,6 +746,10 @@ if (process.env.NODE_ENV !== 'production') {
   });
 }
 
-app.listen(PORT, () => {
-  console.log(`SIM-Warga Server berjalan di http://localhost:${PORT}`);
+const server = app.listen(PORT, HOST, () => {
+  console.log(`SIM-Warga Server berjalan di http://${HOST}:${PORT}`);
+});
+
+server.on('error', (err: any) => {
+  console.error('Server listen error:', err);
 });

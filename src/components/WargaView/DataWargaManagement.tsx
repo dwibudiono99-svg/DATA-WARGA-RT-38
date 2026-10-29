@@ -749,14 +749,14 @@ export const DataWargaManagement: React.FC<DataWargaManagementProps> = ({ onOpen
                   </td>
                 </tr>
               ) : (
-                filteredWarga.map((warga) => {
+                filteredWarga.map((warga, index) => {
                   const isOwner =
                     warga.nomorRumah === currentUser.nomorRumah && warga.blokRumah === currentUser.blokRumah;
                   const isVerified = (warga.statusVerifikasiKK || 'Terverifikasi') === 'Terverifikasi';
                   const adminInfo = isWargaAdmin(warga);
 
                   return (
-                    <tr key={warga.id} className="hover:bg-slate-50/80 transition-colors">
+                    <tr key={`${warga.id}_${index}`} className="hover:bg-slate-50/80 transition-colors">
                       {/* Name & NIK */}
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">

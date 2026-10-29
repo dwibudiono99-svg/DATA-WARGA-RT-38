@@ -336,13 +336,13 @@ export const AdminDelegationModal: React.FC<AdminDelegationModalProps> = ({
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {adminUsers.map((admin) => {
+              {adminUsers.map((admin, index) => {
                 const isCurrentActive = admin.id === currentUser.id;
                 const isEditing = editingUserId === admin.id;
 
                 return (
                   <div
-                    key={admin.id}
+                    key={`${admin.id}_${index}`}
                     className={`p-4 rounded-2xl border transition-all flex flex-col justify-between space-y-3 ${
                       isCurrentActive
                         ? 'bg-indigo-50/70 border-indigo-300 shadow-xs ring-1 ring-indigo-400/40'
@@ -511,8 +511,8 @@ export const AdminDelegationModal: React.FC<AdminDelegationModalProps> = ({
                   className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl font-medium text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-none"
                 >
                   <option value="">-- Pilih Warga dari Database ({availableWarga.length} Pilihan) --</option>
-                  {availableWarga.map((warga) => (
-                    <option key={warga.id} value={warga.id}>
+                  {availableWarga.map((warga, index) => (
+                    <option key={`${warga.id}_${index}`} value={warga.id}>
                       {warga.namaLengkap} ({warga.blokRumah} No. {warga.nomorRumah}) — {warga.pekerjaan || 'Warga'}
                     </option>
                   ))}

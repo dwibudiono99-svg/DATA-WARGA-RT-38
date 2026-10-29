@@ -29,6 +29,7 @@ import { WebHostingBanner } from '../WebHostingBanner';
 import { EditKopRTModal } from '../EditKopRTModal';
 import { JenisSuratManagerModal } from '../JenisSuratManagerModal';
 import { IuranStatistikChart } from '../IuranStatistikChart';
+import { KalenderKegiatanWarga } from '../KalenderKegiatanWarga';
 import { BlokRumah } from '../../types/rbac';
 
 interface RTDashboardProps {
@@ -348,7 +349,10 @@ export const RTDashboard: React.FC<RTDashboardProps> = ({
         </div>
       </div>
 
-      {/* 5. Statistik Iuran Warga (Recharts) */}
+      {/* 5. Kalender & Jadwal Kegiatan Warga (Kerja Bakti, Rapat RT, Posyandu, Ronda) */}
+      <KalenderKegiatanWarga isAdmin={true} />
+
+      {/* 6. Statistik Iuran Warga (Recharts) */}
       <IuranStatistikChart
         variant="admin"
         onNavigateIuran={() => onNavigateTab('iuran')}
@@ -451,8 +455,8 @@ export const RTDashboard: React.FC<RTDashboardProps> = ({
           </div>
 
           <div className="divide-y divide-slate-100">
-            {wargaList.slice(0, 4).map((w) => (
-              <div key={w.id} className="py-3 flex items-center justify-between text-xs">
+            {wargaList.slice(0, 4).map((w, index) => (
+              <div key={`${w.id}_${index}`} className="py-3 flex items-center justify-between text-xs">
                 <div>
                   <p className="font-bold text-slate-900">{w.namaLengkap}</p>
                   <p className="text-[11px] text-slate-500">

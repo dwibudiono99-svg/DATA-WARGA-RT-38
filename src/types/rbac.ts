@@ -63,7 +63,8 @@ export type PermissionKey =
   | 'audit:view'
   | 'roles:manage_permissions'
   | 'pelaporan:view'
-  | 'backup:manage';
+  | 'backup:manage'
+  | 'kegiatan:manage';
 
 export interface PermissionDefinition {
   key: PermissionKey;
@@ -367,3 +368,42 @@ export interface InfoPerumahan {
   namaSekretarisRT?: string;
   namaBendaharaRT?: string;
 }
+
+export type KategoriKegiatan =
+  | 'Kerja Bakti'
+  | 'Rapat RT'
+  | 'Posyandu'
+  | 'Keamanan & Ronda'
+  | 'Sosial & Keagamaan'
+  | 'Olahraga & Kesehatan'
+  | 'Lainnya';
+
+export type StatusKegiatan = 'Akan Datang' | 'Sedang Berlangsung' | 'Selesai' | 'Dibatalkan';
+
+export interface RsvpKegiatan {
+  userId: string;
+  userName: string;
+  blokNomor: string;
+  status: 'Hadir' | 'Izin';
+  catatan?: string;
+  timestamp: string;
+}
+
+export interface KegiatanWarga {
+  id: string;
+  judul: string;
+  kategori: KategoriKegiatan;
+  tanggal: string; // Format: YYYY-MM-DD
+  waktuMulai: string; // Contoh: '06:30'
+  waktuSelesai: string; // Contoh: '09:30'
+  lokasi: string;
+  deskripsi: string;
+  penanggungJawab: string;
+  noKontakPj?: string;
+  perlengkapan?: string;
+  sasaranPeserta?: string;
+  status: StatusKegiatan;
+  rsvpList?: RsvpKegiatan[];
+  createdAt: string;
+}
+

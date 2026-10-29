@@ -536,11 +536,15 @@ export const FormPendataanModelKK: React.FC<FormPendataanModelKKProps> = ({
         `Berhasil memperbarui Kartu Keluarga ${formData.namaLengkap} (${formData.blokRumah}-${formData.nomorRumah}) No. KK ${formData.noKK} dengan alamat domisili terverifikasi SIAK.`
       );
     } else {
-      tambahWarga(payload);
+      const generatedWargaId = `wrg_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+      tambahWarga({
+        ...payload,
+        id: generatedWargaId,
+      });
 
       // Auto generate iuran bulan berjalan
       tambahIuranBaru({
-        wargaId: 'wrg_' + Date.now(),
+        wargaId: generatedWargaId,
         namaWarga: formData.namaLengkap,
         blokRumah: formData.blokRumah,
         nomorRumah: formData.nomorRumah,
@@ -564,7 +568,7 @@ export const FormPendataanModelKK: React.FC<FormPendataanModelKKProps> = ({
       onClose();
       if (onSuccessSaved) {
         onSuccessSaved({
-          id: initialData?.id || 'wrg_' + Date.now(),
+          id: initialData?.id || `wrg_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`,
           ...payload,
         });
       }

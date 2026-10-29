@@ -412,9 +412,9 @@ export const Navbar: React.FC<NavbarProps> = ({
                       Pindah Akun Warga / RT:
                     </p>
                     <div className="space-y-1">
-                      {users.map((user) => (
+                      {users.map((user, index) => (
                         <button
-                          key={user.id}
+                          key={`${user.id}_${index}`}
                           type="button"
                           onClick={() => {
                             loginAsUser(user.id);

@@ -21,6 +21,7 @@ import {
 import { KopDanLogoRT } from '../KopDanLogoRT';
 import { WebHostingBanner } from '../WebHostingBanner';
 import { IuranStatistikChart } from '../IuranStatistikChart';
+import { KalenderKegiatanWarga } from '../KalenderKegiatanWarga';
 
 interface WargaDashboardProps {
   onNavigateTab: (tab: string) => void;
@@ -248,6 +249,9 @@ export const WargaDashboard: React.FC<WargaDashboardProps> = ({
           </button>
         </div>
       </div>
+
+      {/* Kalender & Jadwal Kegiatan Warga Lingkungan */}
+      <KalenderKegiatanWarga isAdmin={false} />
 
       {/* Statistik & Transparansi Iuran Warga (Recharts) */}
       <IuranStatistikChart

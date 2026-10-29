@@ -17,6 +17,7 @@ import {
   JenisSuratConfig,
   PetugasKeamanan,
   NotifikasiSimulasi,
+  KegiatanWarga,
 } from '../types/rbac';
 import {
   DEFAULT_ROLE_PERMISSIONS,
@@ -31,6 +32,7 @@ import {
   INITIAL_JENIS_SURAT,
   INITIAL_PETUGAS_KEAMANAN,
   INITIAL_NOTIFIKASI,
+  INITIAL_KEGIATAN,
   PERMISSION_DEFINITIONS,
 } from '../data/defaultData';
 
@@ -87,7 +89,7 @@ interface RBACContextType {
   updateInfoPerumahan: (newInfo: Partial<InfoPerumahan>) => boolean;
 
   // Warga Management (Admin / User)
-  tambahWarga: (warga: Omit<WargaItem, 'id'>) => void;
+  tambahWarga: (warga: Omit<WargaItem, 'id'> & { id?: string }) => void;
   updateWarga: (id: string, updates: Partial<WargaItem>) => boolean;
   hapusWarga: (id: string) => boolean;
 
@@ -117,6 +119,13 @@ interface RBACContextType {
   // Pengumuman
   buatPengumuman: (judul: string, isi: string, kategori: PengumumanPerumahan['kategori'], prioritas: PengumumanPerumahan['prioritas']) => void;
   hapusPengumuman: (id: string) => boolean;
+
+  // Kalender Kegiatan Warga (Agenda Lingkungan, Kerja Bakti, Rapat RT, Posyandu)
+  kegiatanList: KegiatanWarga[];
+  tambahKegiatan: (kegiatan: Omit<KegiatanWarga, 'id' | 'createdAt' | 'rsvpList'>) => boolean;
+  updateKegiatan: (id: string, updates: Partial<KegiatanWarga>) => boolean;
+  hapusKegiatan: (id: string) => boolean;
+  rsvpKegiatan: (kegiatanId: string, status: 'Hadir' | 'Izin', catatan?: string) => boolean;
 
   // Permissions & Dynamic Matrix
   toggleRolePermission: (role: Role, permission: PermissionKey) => void;
@@ -159,6 +168,7 @@ const STORAGE_KEYS = {
   AUDIT_LOGS: 'sim_warga_audit_logs',
   INFO: 'sim_warga_info_perumahan',
   NOTIFIKASI: 'sim_warga_notifikasi',
+  KEGIATAN: 'sim_warga_kegiatan',
 };
 
 export const RBACProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -234,16 +244,31 @@ export const RBACProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const saved = localStorage.getItem(STORAGE_KEYS.WARGA);
       if (saved) {
         const parsed: WargaItem[] = JSON.parse(saved);
-        const hasLegacyDummy = parsed.some(
-          (w) => w.id?.startsWith('wrg_0') || w.nik?.startsWith('3276') || w.namaLengkap?.includes('Budi Santoso')
+        const filtered = parsed.filter(
+          (w) => !w.id?.startsWith('wrg_0') && !w.nik?.startsWith('3276') && !w.namaLengkap?.includes('Budi Santoso')
         );
-        if (hasLegacyDummy) {
-          const filtered = parsed.filter(
-            (w) => !w.id?.startsWith('wrg_0') && !w.nik?.startsWith('3276') && !w.namaLengkap?.includes('Budi Santoso')
-          );
-          return filtered.length > 0 ? filtered : INITIAL_WARGA;
+        const rawList = filtered.length > 0 ? filtered : INITIAL_WARGA;
+
+        // Ensure every item has a unique ID across the list
+        const seenIds = new Set<string>();
+        const uniqueList: WargaItem[] = [];
+        let hasDuplicate = false;
+        for (let idx = 0; idx < rawList.length; idx++) {
+          const item = rawList[idx];
+          if (!item.id || seenIds.has(item.id)) {
+            hasDuplicate = true;
+            const uniqueId = `wrg_${Date.now()}_${idx}_${Math.random().toString(36).substring(2, 8)}`;
+            seenIds.add(uniqueId);
+            uniqueList.push({ ...item, id: uniqueId });
+          } else {
+            seenIds.add(item.id);
+            uniqueList.push(item);
+          }
         }
-        return parsed;
+        if (hasDuplicate) {
+          localStorage.setItem(STORAGE_KEYS.WARGA, JSON.stringify(uniqueList));
+        }
+        return uniqueList;
       }
       return INITIAL_WARGA;
     } catch {
@@ -315,6 +340,15 @@ export const RBACProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return saved ? JSON.parse(saved) : INITIAL_PENGUMUMAN;
     } catch {
       return INITIAL_PENGUMUMAN;
+    }
+  });
+
+  const [kegiatanList, setKegiatanList] = useState<KegiatanWarga[]>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEYS.KEGIATAN);
+      return saved ? JSON.parse(saved) : INITIAL_KEGIATAN;
+    } catch {
+      return INITIAL_KEGIATAN;
     }
   });
 
@@ -403,7 +437,20 @@ export const RBACProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const handleStorageChange = (e: StorageEvent) => {
       if (!e.key || !e.newValue) return;
       try {
-        if (e.key === STORAGE_KEYS.WARGA) setWargaList(JSON.parse(e.newValue));
+        if (e.key === STORAGE_KEYS.WARGA) {
+          const parsed = JSON.parse(e.newValue);
+          const seen = new Set<string>();
+          const sanitized: WargaItem[] = (Array.isArray(parsed) ? parsed : []).map((w: WargaItem, idx: number) => {
+            if (!w.id || seen.has(w.id)) {
+              const newId = `wrg_${Date.now()}_${idx}_${Math.random().toString(36).substring(2, 8)}`;
+              seen.add(newId);
+              return { ...w, id: newId };
+            }
+            seen.add(w.id);
+            return w;
+          });
+          setWargaList(sanitized);
+        }
         else if (e.key === STORAGE_KEYS.IURAN) setIuranList(JSON.parse(e.newValue));
         else if (e.key === STORAGE_KEYS.SURAT) setSuratList(JSON.parse(e.newValue));
         else if (e.key === STORAGE_KEYS.JENIS_SURAT) setJenisSuratList(JSON.parse(e.newValue));
@@ -421,6 +468,30 @@ export const RBACProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     window.addEventListener('storage', handleStorageChange);
     return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
+
+  // Self-healing: Ensure no duplicate IDs exist in wargaList or localStorage
+  useEffect(() => {
+    setWargaList((prev) => {
+      const seen = new Set<string>();
+      let hasDuplicate = false;
+      const cleanList = prev.map((w, idx) => {
+        if (!w.id || seen.has(w.id)) {
+          hasDuplicate = true;
+          const newId = `wrg_${Date.now()}_${idx}_${Math.random().toString(36).substring(2, 8)}`;
+          seen.add(newId);
+          return { ...w, id: newId };
+        }
+        seen.add(w.id);
+        return w;
+      });
+
+      if (hasDuplicate) {
+        localStorage.setItem(STORAGE_KEYS.WARGA, JSON.stringify(cleanList));
+        return cleanList;
+      }
+      return prev;
+    });
   }, []);
 
   // Sync state to local storage
@@ -984,15 +1055,20 @@ export const RBACProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   // Warga Management
-  const tambahWarga = (data: Omit<WargaItem, 'id'>) => {
+  const tambahWarga = (data: Omit<WargaItem, 'id'> & { id?: string }) => {
     if (!canExecute('warga:create', 'Menambah Data Warga Baru', 'Data Warga')) return;
 
     const newWarga: WargaItem = {
       ...data,
-      id: `wrg_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      id: data.id || `wrg_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`,
     };
 
-    setWargaList((prev) => [newWarga, ...prev]);
+    setWargaList((prev) => {
+      const filtered = prev.filter((w) => w.id !== newWarga.id && (data.nik ? w.nik !== data.nik : true));
+      const updated = [newWarga, ...filtered];
+      localStorage.setItem(STORAGE_KEYS.WARGA, JSON.stringify(updated));
+      return updated;
+    });
     logAudit('WARGA_CREATE', 'Data Warga', 'success', `Menambahkan warga baru: ${data.namaLengkap} (${data.blokRumah}-${data.nomorRumah}).`);
   };
 
@@ -1005,9 +1081,11 @@ export const RBACProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     if (!canExecute(requiredPermission, 'Memperbarui Data Warga', 'Data Warga')) return false;
 
-    setWargaList((prev) =>
-      prev.map((w) => (w.id === id ? { ...w, ...updates } : w))
-    );
+    setWargaList((prev) => {
+      const updated = prev.map((w) => (w.id === id ? { ...w, ...updates } : w));
+      localStorage.setItem(STORAGE_KEYS.WARGA, JSON.stringify(updated));
+      return updated;
+    });
 
     logAudit('WARGA_UPDATE', 'Data Warga', 'success', `Memperbarui data warga ${target.namaLengkap}.`);
     return true;
@@ -1478,6 +1556,83 @@ export const RBACProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return true;
   };
 
+  // Kalender Kegiatan Warga (Agenda Lingkungan, Kerja Bakti, Rapat RT, Posyandu)
+  const tambahKegiatan = (data: Omit<KegiatanWarga, 'id' | 'createdAt' | 'rsvpList'>): boolean => {
+    if (!canExecute('kegiatan:manage', 'Menambahkan Jadwal Kegiatan Warga', 'Agenda Lingkungan')) return false;
+
+    const newKegiatan: KegiatanWarga = {
+      ...data,
+      id: `kg_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      createdAt: new Date().toISOString(),
+      rsvpList: [],
+    };
+
+    const updated = [newKegiatan, ...kegiatanList].sort((a, b) => a.tanggal.localeCompare(b.tanggal));
+    setKegiatanList(updated);
+    localStorage.setItem(STORAGE_KEYS.KEGIATAN, JSON.stringify(updated));
+    notifyRealtimeSync({ kegiatanList: updated });
+    logAudit('KEGIATAN_ADD', 'Agenda Lingkungan', 'success', `Menambahkan agenda baru: "${data.judul}" tanggal ${data.tanggal}.`);
+    return true;
+  };
+
+  const updateKegiatan = (id: string, updates: Partial<KegiatanWarga>): boolean => {
+    if (!canExecute('kegiatan:manage', 'Mengubah Jadwal Kegiatan Warga', 'Agenda Lingkungan')) return false;
+
+    const updated = kegiatanList
+      .map((k) => (k.id === id ? { ...k, ...updates } : k))
+      .sort((a, b) => a.tanggal.localeCompare(b.tanggal));
+    setKegiatanList(updated);
+    localStorage.setItem(STORAGE_KEYS.KEGIATAN, JSON.stringify(updated));
+    notifyRealtimeSync({ kegiatanList: updated });
+    logAudit('KEGIATAN_UPDATE', 'Agenda Lingkungan', 'success', `Memperbarui jadwal agenda kegiatan warga.`);
+    return true;
+  };
+
+  const hapusKegiatan = (id: string): boolean => {
+    if (!canExecute('kegiatan:manage', 'Menghapus Jadwal Kegiatan Warga', 'Agenda Lingkungan')) return false;
+
+    const target = kegiatanList.find((k) => k.id === id);
+    if (!target) return false;
+
+    const updated = kegiatanList.filter((k) => k.id !== id);
+    setKegiatanList(updated);
+    localStorage.setItem(STORAGE_KEYS.KEGIATAN, JSON.stringify(updated));
+    notifyRealtimeSync({ kegiatanList: updated });
+    logAudit('KEGIATAN_DELETE', 'Agenda Lingkungan', 'success', `Menghapus agenda: "${target.judul}".`);
+    return true;
+  };
+
+  const rsvpKegiatan = (kegiatanId: string, status: 'Hadir' | 'Izin', catatan?: string): boolean => {
+    const target = kegiatanList.find((k) => k.id === kegiatanId);
+    if (!target) return false;
+
+    const currentRsvp = target.rsvpList || [];
+    const existingIndex = currentRsvp.findIndex((r) => r.userId === currentUser.id);
+
+    const newRsvpEntry = {
+      userId: currentUser.id,
+      userName: currentUser.name,
+      blokNomor: `${currentUser.blokRumah}-${currentUser.nomorRumah}`,
+      status,
+      catatan,
+      timestamp: new Date().toISOString(),
+    };
+
+    let updatedRsvp;
+    if (existingIndex >= 0) {
+      updatedRsvp = currentRsvp.map((r, idx) => (idx === existingIndex ? newRsvpEntry : r));
+    } else {
+      updatedRsvp = [...currentRsvp, newRsvpEntry];
+    }
+
+    const updatedList = kegiatanList.map((k) => (k.id === kegiatanId ? { ...k, rsvpList: updatedRsvp } : k));
+    setKegiatanList(updatedList);
+    localStorage.setItem(STORAGE_KEYS.KEGIATAN, JSON.stringify(updatedList));
+    notifyRealtimeSync({ kegiatanList: updatedList });
+    logAudit('KEGIATAN_RSVP', 'Agenda Lingkungan', 'success', `${currentUser.name} mengonfirmasi status kehadiran "${status}" pada agenda "${target.judul}".`);
+    return true;
+  };
+
   // Matrix Permissions
   const toggleRolePermission = (role: Role, permission: PermissionKey) => {
     if (!canExecute('roles:manage_permissions', 'Mengubah Matriks Hak Akses RBAC', 'Pengaturan Keamanan')) return;
@@ -1678,6 +1833,7 @@ export const RBACProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setPetugasKeamananList(INITIAL_PETUGAS_KEAMANAN);
     setLaporanList(INITIAL_LAPORAN);
     setPengumumanList(INITIAL_PENGUMUMAN);
+    setKegiatanList(INITIAL_KEGIATAN);
     setRolePermissions(DEFAULT_ROLE_PERMISSIONS);
     setAuditLogs(INITIAL_AUDIT_LOGS);
     setAccessDeniedInfo(null);
@@ -1692,6 +1848,7 @@ export const RBACProvider: React.FC<{ children: React.ReactNode }> = ({ children
       petugasKeamananList: INITIAL_PETUGAS_KEAMANAN,
       laporanList: INITIAL_LAPORAN,
       pengumumanList: INITIAL_PENGUMUMAN,
+      kegiatanList: INITIAL_KEGIATAN,
       rolePermissions: DEFAULT_ROLE_PERMISSIONS,
       auditLogs: INITIAL_AUDIT_LOGS,
     });
@@ -1711,6 +1868,11 @@ export const RBACProvider: React.FC<{ children: React.ReactNode }> = ({ children
         petugasKeamananList,
         laporanList,
         pengumumanList,
+        kegiatanList,
+        tambahKegiatan,
+        updateKegiatan,
+        hapusKegiatan,
+        rsvpKegiatan,
         auditLogs,
         accessDeniedInfo,
         hasPermission,
